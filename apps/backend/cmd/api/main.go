@@ -1,27 +1,22 @@
 package main
 
 import (
-	"log"
-	"net/http"
+	"log/slog"
 	"os"
+
+	"saferoute-backend/config"
+	"saferoute-backend/internal/app"
 )
 
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
+	cfg := config.Load()
+	server := app.New(cfg)
+	addr := cfg.Address()
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok"))
-	})
+	slog.Info("starting SafeRoute backend", "addr", addr, "env", cfg.Environment)
 
-	addr := ":" + port
-	log.Printf("SafeRoute backend listening on %s", addr)
-
-	if err := http.ListenAndServe(addr, mux); err != nil {
-		log.Fatal(err)
+	if err := server.Listen(addr); err != nil {
+		slog.Error("backend stopped", "error", err)
+		os.Exit(1)
 	}
 }
