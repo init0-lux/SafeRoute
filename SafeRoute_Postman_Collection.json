@@ -637,6 +637,53 @@
 							"body": "{\n    \"error\": \"radius must be greater than 0 and within the configured maximum\"\n}"
 						}
 					]
+				},
+				{
+					"name": "Get Route Safety Score",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"origin\": {\n        \"lat\": 12.9716,\n        \"lng\": 77.5946\n    },\n    \"destination\": {\n        \"lat\": 12.9352,\n        \"lng\": 77.6245\n    },\n    \"travel_mode\": \"walking\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/safety/route-score",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"safety",
+								"route-score"
+							]
+						},
+						"description": "Compute a safety score for the backend-chosen walking route between an origin and destination. Requires a configured Google Routes API key on the backend."
+					},
+					"response": [
+						{
+							"name": "Route Safety Score Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"score\": 58,\n    \"risk_level\": \"moderate\",\n    \"route\": {\n        \"distance_meters\": 4200,\n        \"duration_seconds\": 3120,\n        \"polyline\": \"encoded-polyline-from-provider\"\n    },\n    \"summary\": {\n        \"recent_reports\": 6,\n        \"historical_reports\": 23,\n        \"recent_trust_weight\": 3.1,\n        \"historical_trust_weight\": 10.8,\n        \"highest_risk_segment_index\": 4\n    },\n    \"segments\": [\n        {\n            \"index\": 0,\n            \"start_fraction\": 0,\n            \"end_fraction\": 0.125,\n            \"score\": 74,\n            \"risk_level\": \"moderate\",\n            \"factors\": {\n                \"recent_reports\": 0,\n                \"historical_reports\": 2,\n                \"recent_trust_weight\": 0,\n                \"historical_trust_weight\": 0.6,\n                \"time_risk\": \"high\",\n                \"time_risk_multiplier\": 0.8,\n                \"confidence\": \"low\",\n                \"confidence_score\": 0.12\n            }\n        }\n    ]\n}"
+						},
+						{
+							"name": "Route Safety Score Unavailable",
+							"status": "Service Unavailable",
+							"code": 503,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"route provider unavailable\"\n}"
+						}
+					]
 				}
 			]
 		}

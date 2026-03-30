@@ -74,10 +74,26 @@ func main() {
 	safetyHandler := safety.NewHandler(
 		safety.NewService(
 			safety.NewRepository(database),
+			safety.NewGoogleRoutesProvider(safety.GoogleRoutesConfig{
+				APIKey:  cfg.GoogleRoutesAPIKey,
+				BaseURL: cfg.GoogleRoutesBaseURL,
+			}),
 			safety.ServiceConfig{
-				DefaultRadiusM: cfg.SafetyDefaultRadiusM,
-				MaxRadiusM:     cfg.SafetyMaxRadiusM,
-				RecentWindow:   cfg.SafetyRecentWindow,
+				DefaultRadiusM:       cfg.SafetyDefaultRadiusM,
+				MaxRadiusM:           cfg.SafetyMaxRadiusM,
+				RecentWindow:         cfg.SafetyRecentWindow,
+				RouteCorridorRadiusM: cfg.SafetyRouteCorridorRadiusM,
+				RouteSegmentLengthM:  cfg.SafetyRouteSegmentLengthM,
+				RouteMaxDistanceM:    cfg.SafetyRouteMaxDistanceM,
+				TimeRisk: safety.TimeRiskConfig{
+					Timezone:         cfg.SafetyTimeRiskTimezone,
+					HighStartHour:    cfg.SafetyTimeRiskHighStartHour,
+					HighEndHour:      cfg.SafetyTimeRiskHighEndHour,
+					MorningStartHour: cfg.SafetyTimeRiskMorningStartHour,
+					MorningEndHour:   cfg.SafetyTimeRiskMorningEndHour,
+					EveningStartHour: cfg.SafetyTimeRiskEveningStartHour,
+					EveningEndHour:   cfg.SafetyTimeRiskEveningEndHour,
+				},
 			},
 		),
 	)
