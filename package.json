@@ -2,5 +2,12 @@
   "name": "saferoute",
   "private": true,
   "version": "0.0.0",
+  "scripts": {
+    "frontend": "pnpm --filter frontend start",
+    "frontend:web": "pnpm --filter frontend web",
+    "frontend:android": "pnpm --filter frontend android",
+    "frontend:ios": "pnpm --filter frontend ios",
+    "frontend:install": "pnpm --filter frontend install"
+  },
   "packageManager": "pnpm@10.30.3"
 }
