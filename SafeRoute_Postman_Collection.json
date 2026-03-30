@@ -582,6 +582,63 @@
 					"response": []
 				}
 			]
+		},
+		{
+			"name": "Safety",
+			"item": [
+				{
+					"name": "Get Safety Score",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/safety/score?lat=12.9716&lng=77.5946&radius=500",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"safety",
+								"score"
+							],
+							"query": [
+								{
+									"key": "lat",
+									"value": "12.9716"
+								},
+								{
+									"key": "lng",
+									"value": "77.5946"
+								},
+								{
+									"key": "radius",
+									"value": "500"
+								}
+							]
+						},
+						"description": "Compute a safety score for a point using recent and historical nearby reports, trust-weighted density, and a time-of-day factor."
+					},
+					"response": [
+						{
+							"name": "Safety Score Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"score\": 62,\n    \"risk_level\": \"moderate\",\n    \"factors\": {\n        \"recent_reports\": 3,\n        \"historical_reports\": 12,\n        \"recent_trust_weight\": 1.8,\n        \"historical_trust_weight\": 6.4,\n        \"time_risk\": \"high\",\n        \"time_risk_multiplier\": 0.8,\n        \"confidence\": \"high\",\n        \"confidence_score\": 1,\n        \"radius_meters\": 500,\n        \"recent_window_hours\": 6\n    }\n}"
+						},
+						{
+							"name": "Safety Score Bad Request",
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"radius must be greater than 0 and within the configured maximum\"\n}"
+						}
+					]
+				}
+			]
 		}
 	],
 	"variable": [

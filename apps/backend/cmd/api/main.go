@@ -10,6 +10,7 @@ import (
 	dbconn "saferoute-backend/internal/common/db"
 	"saferoute-backend/internal/evidence"
 	"saferoute-backend/internal/reports"
+	"saferoute-backend/internal/safety"
 	"saferoute-backend/internal/sos"
 	"saferoute-backend/internal/trust"
 )
@@ -64,6 +65,16 @@ func main() {
 		authMiddleware.VerifyUser(),
 	)
 	trustHandler := trust.NewHandler(trustService, authMiddleware.VerifyUser())
+	safetyHandler := safety.NewHandler(
+		safety.NewService(
+			safety.NewRepository(database),
+			safety.ServiceConfig{
+				DefaultRadiusM: cfg.SafetyDefaultRadiusM,
+				MaxRadiusM:     cfg.SafetyMaxRadiusM,
+				RecentWindow:   cfg.SafetyRecentWindow,
+			},
+		),
+	)
 	evidenceHandler := evidence.NewHandler(
 		evidence.NewService(
 			evidence.NewRepository(database),
@@ -77,7 +88,7 @@ func main() {
 		authMiddleware.VerifyUser(),
 	)
 
-	server := app.New(cfg, authHandler.RegisterRoutes, reportsHandler.RegisterRoutes, trustHandler.RegisterRoutes, evidenceHandler.RegisterRoutes)
+	server := app.New(cfg, authHandler.RegisterRoutes, reportsHandler.RegisterRoutes, trustHandler.RegisterRoutes, safetyHandler.RegisterRoutes, evidenceHandler.RegisterRoutes)
 	addr := cfg.Address()
 
 	slog.Info("starting SafeRoute backend", "addr", addr)
