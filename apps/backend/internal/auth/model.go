@@ -12,6 +12,7 @@ type User struct {
 	CorroborationCount  int                `gorm:"not null;default:0"`
 	Verified            bool               `gorm:"not null;default:false"`
 	VerifiedAt          *time.Time         `gorm:"type:timestamptz"`
+	ExpoPushToken       *string            `gorm:"column:expo_push_token;type:text"`
 	CreatedAt           time.Time          `gorm:"type:timestamptz;not null;default:now()"`
 	VerificationRecords []UserVerification `gorm:"constraint:OnDelete:CASCADE;"`
 }

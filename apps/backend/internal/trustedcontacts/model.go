@@ -25,6 +25,8 @@ type TrustedContact struct {
 	AcceptedAt time.Time `gorm:"column:accepted_at;type:timestamptz;not null;default:now()"`
 	CreatedAt  time.Time `gorm:"type:timestamptz;not null;default:now()"`
 	User       auth.User `gorm:"constraint:OnDelete:CASCADE;foreignKey:UserID;references:ID"`
+	// Field for joined query
+	PushToken  string    `gorm:"-"`
 }
 
 type TrustedContactRequest struct {

@@ -40,14 +40,42 @@ func NewHandler(service *Service, sessions *SessionManager) *Handler {
 	}
 }
 
+type pushTokenRequest struct {
+	Token string `json:"token"`
+}
+
 func (h *Handler) RegisterRoutes(router fiber.Router) {
 	authRoutes := router.Group("/auth")
 	authRoutes.Post("/register", h.register)
 	authRoutes.Post("/login", h.login)
 	authRoutes.Post("/refresh", h.refresh)
 	authRoutes.Post("/logout", h.logout)
-	authRoutes.Get("/me", h.auth.VerifyUser(), h.me)
+	authRoutes.Get("/me", h.requireAuth, h.me)
+	authRoutes.Post("/push-token", h.requireAuth, h.updatePushToken)
 }
+
+func (h *Handler) updatePushToken(c *fiber.Ctx) error {
+	user, ok := c.Locals(currentUserKey).(*User)
+	if !ok || user == nil {
+		return h.writeAuthError(c, ErrUnauthorized)
+	}
+
+	var req pushTokenRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "invalid request body",
+		})
+	}
+
+	if err := h.service.UpdatePushToken(c.UserContext(), user.ID, req.Token); err != nil {
+		return h.writeAuthError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status": "updated",
+	})
+}
+
 
 func (h *Handler) register(c *fiber.Ctx) error {
 	var req authRequest

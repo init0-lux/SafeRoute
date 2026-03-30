@@ -25,8 +25,9 @@ type SSEBroadcaster struct {
 }
 
 type Service struct {
-	repo        Repository
-	broadcaster *SSEBroadcaster
+	repo                       Repository
+	broadcaster                *SSEBroadcaster
+	notifyTrustedContactsFunc  func(ctx context.Context, session *SOSSession) error
 }
 
 func NewService(repo Repository) *Service {
@@ -40,6 +41,10 @@ func NewSSEBroadcaster() *SSEBroadcaster {
 	return &SSEBroadcaster{
 		subscribers: make(map[string]map[chan ViewerEvent]struct{}),
 	}
+}
+
+func (s *Service) SetNotifyTrustedContactsFunc(fn func(ctx context.Context, session *SOSSession) error) {
+	s.notifyTrustedContactsFunc = fn
 }
 
 func (b *SSEBroadcaster) Subscribe(sessionID string) (<-chan ViewerEvent, func()) {
@@ -109,6 +114,12 @@ func (s *Service) StartSession(ctx context.Context, userID string) (*SOSSession,
 
 	if err := s.repo.CreateSession(ctx, session); err != nil {
 		return nil, err
+	}
+
+	if s.notifyTrustedContactsFunc != nil {
+		if err := s.notifyTrustedContactsFunc(ctx, session); err != nil {
+			return nil, err
+		}
 	}
 
 	return session, nil

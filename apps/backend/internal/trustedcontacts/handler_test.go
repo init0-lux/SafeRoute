@@ -315,6 +315,23 @@ func (r *memoryRepository) GetTrustedContactByUserPhone(_ context.Context, userI
 	return &copyContact, nil
 }
 
+func (r *memoryRepository) ListTrustedContactsByUserID(_ context.Context, userID string) ([]trustedcontacts.TrustedContact, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	contacts := make([]trustedcontacts.TrustedContact, 0)
+	for _, contact := range r.contactsByID {
+		if contact.UserID != userID {
+			continue
+		}
+
+		copyContact := *contact
+		contacts = append(contacts, copyContact)
+	}
+
+	return contacts, nil
+}
+
 func (r *memoryRepository) CompleteRequestAcceptance(_ context.Context, request *trustedcontacts.TrustedContactRequest, contact *trustedcontacts.TrustedContact) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

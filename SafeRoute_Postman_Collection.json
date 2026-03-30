@@ -19,33 +19,8 @@
 					"path": [
 						"health"
 					]
-				},
-				"description": "Check the health status of the backend service."
-			},
-			"response": [
-				{
-					"name": "Health OK",
-					"originalRequest": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/health",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"health"
-							]
-						}
-					},
-					"status": "OK",
-					"code": 200,
-					"_postman_previewlanguage": "json",
-					"header": [],
-					"cookie": [],
-					"body": "{\n    \"status\": \"ok\",\n    \"service\": \"SafeRoute Backend\",\n    \"environment\": \"development\"\n}"
 				}
-			]
+			}
 		},
 		{
 			"name": "Auth",
@@ -73,20 +48,8 @@
 								"auth",
 								"register"
 							]
-						},
-						"description": "Register a new user account. Sets HTTP-only session cookies upon success."
-					},
-					"response": [
-						{
-							"name": "Registration Success",
-							"status": "Created",
-							"code": 201,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"user\": {\n        \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"phone\": \"+919876543210\",\n        \"email\": \"user@example.com\",\n        \"trust_score\": 0.3,\n        \"verified\": false\n    }\n}"
 						}
-					]
+					}
 				},
 				{
 					"name": "Login",
@@ -111,23 +74,11 @@
 								"auth",
 								"login"
 							]
-						},
-						"description": "Authenticate a user and receive session cookies."
-					},
-					"response": [
-						{
-							"name": "Login Success",
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"user\": {\n        \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"phone\": \"+919876543210\",\n        \"email\": \"user@example.com\",\n        \"trust_score\": 0.3,\n        \"verified\": false\n    }\n}"
 						}
-					]
+					}
 				},
 				{
-					"name": "Get Current User (Me)",
+					"name": "Get Me",
 					"request": {
 						"method": "GET",
 						"header": [],
@@ -140,49 +91,35 @@
 								"auth",
 								"me"
 							]
-						},
-						"description": "Retrieve profile information for the currently authenticated user. Requires valid session cookies."
-					},
-					"response": [
-						{
-							"name": "Success",
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"user\": {\n        \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"phone\": \"+919876543210\",\n        \"email\": \"user@example.com\",\n        \"trust_score\": 0.3,\n        \"verified\": false\n    }\n}"
 						}
-					]
+					}
 				},
 				{
-					"name": "Refresh Token",
+					"name": "Update Push Token",
 					"request": {
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"token\": \"ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]\"\n}"
+						},
 						"url": {
-							"raw": "{{base_url}}/auth/refresh",
+							"raw": "{{base_url}}/auth/push-token",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"auth",
-								"refresh"
+								"push-token"
 							]
 						},
-						"description": "Refresh the access token using the refresh cookie."
-					},
-					"response": [
-						{
-							"name": "Refresh Success",
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"user\": {\n        \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"phone\": \"+919876543210\",\n        \"email\": \"user@example.com\",\n        \"trust_score\": 0.3,\n        \"verified\": false\n    }\n}"
-						}
-					]
+						"description": "Register the Expo Push Token for the current user to receive SOS alerts."
+					}
 				},
 				{
 					"name": "Logout",
@@ -198,20 +135,8 @@
 								"auth",
 								"logout"
 							]
-						},
-						"description": "Clear authentication cookies and end the session."
-					},
-					"response": [
-						{
-							"name": "Logout Success",
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"status\": \"logged_out\"\n}"
 						}
-					]
+					}
 				}
 			]
 		},
@@ -219,24 +144,7 @@
 			"name": "Trusted Contacts",
 			"item": [
 				{
-					"name": "Create Trusted Contact Request",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"const data = pm.response.json();",
-									"if (data.request && data.request.id) {",
-									"    pm.collectionVariables.set('trusted_contact_request_id', data.request.id);",
-									"}",
-									"if (data.accept_token) {",
-									"    pm.collectionVariables.set('trusted_contact_accept_token', data.accept_token);",
-									"}"
-								]
-							}
-						}
-					],
+					"name": "Create Request",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -247,7 +155,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Emergency Contact\",\n    \"phone\": \"+91 88888 22222\",\n    \"email\": \"helper@example.com\"\n}"
+							"raw": "{\n    \"name\": \"John Doe\",\n    \"phone\": \"+919998887776\",\n    \"email\": \"john@example.com\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/trusted-contacts/requests",
@@ -258,46 +166,11 @@
 								"trusted-contacts",
 								"requests"
 							]
-						},
-						"description": "Create a pending trusted-contact request for the authenticated user. This request stores `request.id` and `accept_token` into collection variables for local testing. In a production notification flow, that token should be embedded into the SMS/email link instead of being surfaced broadly."
-					},
-					"response": [
-						{
-							"name": "Create Trusted Contact Request Success",
-							"status": "Created",
-							"code": 201,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"request\": {\n        \"id\": \"request-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"name\": \"Emergency Contact\",\n        \"phone\": \"+918888822222\",\n        \"email\": \"helper@example.com\",\n        \"status\": \"pending\",\n        \"expires_at\": \"2026-04-07T12:00:00Z\",\n        \"created_at\": \"2026-03-31T12:00:00Z\"\n    },\n    \"accept_token\": \"dev-token\"\n}"
-						},
-						{
-							"name": "Pending Request Conflict",
-							"status": "Conflict",
-							"code": 409,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"error\": \"trusted contact request already pending\"\n}"
 						}
-					]
+					}
 				},
 				{
-					"name": "Accept Trusted Contact Request",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"const data = pm.response.json();",
-									"if (data.contact && data.contact.id) {",
-									"    pm.collectionVariables.set('trusted_contact_id', data.contact.id);",
-									"}"
-								]
-							}
-						}
-					],
+					"name": "Accept Request",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -308,80 +181,38 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"token\": \"{{trusted_contact_accept_token}}\"\n}"
+							"raw": "{\n    \"token\": \"invite-token-from-previous-step\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/trusted-contacts/requests/{{trusted_contact_request_id}}/accept",
+							"raw": "{{base_url}}/trusted-contacts/requests/:id/accept",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"trusted-contacts",
 								"requests",
-								"{{trusted_contact_request_id}}",
+								"request-uuid",
 								"accept"
 							]
-						},
-						"description": "Accept a pending trusted-contact request using the invitation token. This route is token-based and does not currently require auth."
-					},
-					"response": [
-						{
-							"name": "Accept Trusted Contact Request Success",
-							"status": "Created",
-							"code": 201,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"request\": {\n        \"id\": \"request-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"name\": \"Emergency Contact\",\n        \"phone\": \"+918888822222\",\n        \"email\": \"helper@example.com\",\n        \"status\": \"accepted\",\n        \"expires_at\": \"2026-04-07T12:00:00Z\",\n        \"responded_at\": \"2026-03-31T12:05:00Z\",\n        \"created_at\": \"2026-03-31T12:00:00Z\"\n    },\n    \"contact\": {\n        \"id\": \"contact-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"request_id\": \"request-123\",\n        \"name\": \"Emergency Contact\",\n        \"phone\": \"+918888822222\",\n        \"email\": \"helper@example.com\",\n        \"accepted_at\": \"2026-03-31T12:05:00Z\",\n        \"created_at\": \"2026-03-31T12:05:00Z\"\n    }\n}"
-						},
-						{
-							"name": "Invalid Token",
-							"status": "Bad Request",
-							"code": 400,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"error\": \"trusted contact request token is invalid\"\n}"
 						}
-					]
+					}
 				},
 				{
-					"name": "Remove Trusted Contact",
+					"name": "Delete Contact",
 					"request": {
 						"method": "DELETE",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/trusted-contacts/{{trusted_contact_id}}",
+							"raw": "{{base_url}}/trusted-contacts/:id",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"trusted-contacts",
-								"{{trusted_contact_id}}"
+								"contact-uuid"
 							]
-						},
-						"description": "Delete an accepted trusted contact for the authenticated user."
-					},
-					"response": [
-						{
-							"name": "Delete Trusted Contact Success",
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"status\": \"deleted\"\n}"
-						},
-						{
-							"name": "Trusted Contact Not Found",
-							"status": "Not Found",
-							"code": 404,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"error\": \"trusted contact not found\"\n}"
 						}
-					]
+					}
 				}
 			]
 		},
@@ -390,32 +221,9 @@
 			"item": [
 				{
 					"name": "Start SOS Session",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"const data = pm.response.json();",
-									"if (data.session && data.session.id) {",
-									"    pm.collectionVariables.set('sos_session_id', data.session.id);",
-									"}"
-								]
-							}
-						}
-					],
 					"request": {
 						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{}"
-						},
+						"header": [],
 						"url": {
 							"raw": "{{base_url}}/sos/start",
 							"host": [
@@ -425,151 +233,73 @@
 								"sos",
 								"start"
 							]
-						},
-						"description": "Create a new SOS session for the currently authenticated user. Only one active SOS session is allowed per user at a time. On success, this request stores `session.id` into the `sos_session_id` collection variable."
-					},
-					"response": [
-						{
-							"name": "Start Success",
-							"status": "Created",
-							"code": 201,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"session\": {\n        \"id\": \"sos-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"status\": \"active\",\n        \"started_at\": \"2026-03-31T12:00:00Z\",\n        \"ended_at\": null\n    }\n}"
-						},
-						{
-							"name": "Active Session Conflict",
-							"status": "Conflict",
-							"code": 409,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"error\": \"active sos session already exists\"\n}"
 						}
-					]
+					}
 				},
 				{
-					"name": "Get SOS Session",
+					"name": "Get Session",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/sos/{{sos_session_id}}",
+							"raw": "{{base_url}}/sos/:id",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"sos",
-								"{{sos_session_id}}"
+								"session-uuid"
 							]
-						},
-						"description": "Fetch the current SOS session state. Owner-authenticated only in the current backend implementation."
-					},
-					"response": [
-						{
-							"name": "Get Success",
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"session\": {\n        \"id\": \"sos-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"status\": \"active\",\n        \"started_at\": \"2026-03-31T12:00:00Z\",\n        \"ended_at\": null\n    }\n}"
-						},
-						{
-							"name": "Not Found",
-							"status": "Not Found",
-							"code": 404,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"error\": \"sos session not found\"\n}"
 						}
-					]
+					}
 				},
 				{
-					"name": "Create SOS Viewer Grant",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"const data = pm.response.json();",
-									"if (data.viewer_token) {",
-									"    pm.collectionVariables.set('sos_viewer_token', data.viewer_token);",
-									"}"
-								]
-							}
-						}
-					],
+					"name": "End Session",
 					"request": {
 						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"trusted_contact_id\": \"{{trusted_contact_id}}\"\n}"
-						},
+						"header": [],
 						"url": {
-							"raw": "{{base_url}}/sos/{{sos_session_id}}/viewers",
+							"raw": "{{base_url}}/sos/:id/end",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"sos",
-								"{{sos_session_id}}",
-								"viewers"
+								"session-uuid",
+								"end"
 							]
-						},
-						"description": "Create a dedicated SOS viewer grant for one accepted trusted contact on the current session. This stores `viewer_token` into the `sos_viewer_token` collection variable. The viewer token is distinct from the trusted-contact invite token and is scoped to one SOS session."
-					},
-					"response": [
-						{
-							"name": "Create Viewer Grant Success",
-							"status": "Created",
-							"code": 201,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"grant\": {\n        \"id\": \"viewer-123\",\n        \"session_id\": \"sos-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"trusted_contact_id\": \"contact-123\",\n        \"expires_at\": \"2026-03-31T14:00:00Z\",\n        \"created_at\": \"2026-03-31T12:00:05Z\"\n    },\n    \"viewer_token\": \"viewer-token\",\n    \"sse_url\": \"/api/v1/sos/viewer/stream?token=viewer-token\"\n}"
-						},
-						{
-							"name": "Viewer Grant Conflict",
-							"status": "Conflict",
-							"code": 409,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"error\": \"active sos viewer grant already exists for trusted contact\"\n}"
-						},
-						{
-							"name": "Forbidden Trusted Contact",
-							"status": "Forbidden",
-							"code": 403,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"error\": \"forbidden\"\n}"
 						}
-					]
+					}
 				},
 				{
-					"name": "Stream SOS Viewer (SSE)",
+					"name": "Reporter Stream (WebSocket)",
 					"request": {
 						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "text/event-stream"
-							}
-						],
+						"header": [],
 						"url": {
-							"raw": "{{base_url}}/sos/viewer/stream?token={{sos_viewer_token}}",
+							"raw": "ws://localhost:8080/api/v1/sos/:id/stream",
+							"protocol": "ws",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"v1",
+								"sos",
+								"session-uuid",
+								"stream"
+							]
+						}
+					}
+				},
+				{
+					"name": "Viewer Stream (SSE)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/sos/viewer/stream?token=viewer-token",
 							"host": [
 								"{{base_url}}"
 							],
@@ -581,114 +311,11 @@
 							"query": [
 								{
 									"key": "token",
-									"value": "{{sos_viewer_token}}"
+									"value": "viewer-token"
 								}
 							]
-						},
-						"description": "Open the viewer-side Server-Sent Events stream for a granted SOS session. Use this after `Create SOS Viewer Grant`, then start sending reporter location pings over the reporter WebSocket route. Expected events include `ready`, `location`, and periodic keep-alive comments."
-					},
-					"response": [
-						{
-							"name": "Viewer SSE Stream Open",
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "text",
-							"header": [],
-							"cookie": [],
-							"body": "event: ready\ndata: {\"session_id\":\"sos-123\",\"trusted_contact_id\":\"contact-123\"}\n\nevent: location\ndata: {\"session_id\":\"sos-123\",\"lat\":12.9716,\"lng\":77.5946,\"recorded_at\":\"2026-03-31T12:00:00Z\",\"published_at\":\"2026-03-31T12:00:01Z\"}\n\n: keep-alive\n\n"
-						},
-						{
-							"name": "Viewer Token Not Found",
-							"status": "Not Found",
-							"code": 404,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"error\": \"sos viewer grant not found\"\n}"
 						}
-					]
-				},
-				{
-					"name": "End SOS Session",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{}"
-						},
-						"url": {
-							"raw": "{{base_url}}/sos/{{sos_session_id}}/end",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"sos",
-								"{{sos_session_id}}",
-								"end"
-							]
-						},
-						"description": "End the active SOS session for the authenticated owner."
-					},
-					"response": [
-						{
-							"name": "End Success",
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"session\": {\n        \"id\": \"sos-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"status\": \"ended\",\n        \"started_at\": \"2026-03-31T12:00:00Z\",\n        \"ended_at\": \"2026-03-31T12:05:00Z\"\n    }\n}"
-						},
-						{
-							"name": "Already Ended",
-							"status": "Conflict",
-							"code": 409,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"error\": \"sos session already ended\"\n}"
-						}
-					]
-				},
-				{
-					"name": "Stream SOS Location (WebSocket)",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"lat\": 12.9716,\n    \"lng\": 77.5946,\n    \"ts\": \"2026-03-31T12:00:00Z\"\n}"
-						},
-						"url": {
-							"raw": "{{base_ws_url}}/sos/{{sos_session_id}}/stream",
-							"host": [
-								"{{base_ws_url}}"
-							],
-							"path": [
-								"sos",
-								"{{sos_session_id}}",
-								"stream"
-							]
-						},
-						"description": "Owner-only WebSocket route for SOS reporter location ingest. Use this after login and after creating a session. Send JSON messages like the sample body above. Expected ack: `{ \"status\": \"accepted\", \"recorded_at\": \"2026-03-31T12:00:00Z\" }`. If Postman does not automatically forward the localhost auth cookie during the WebSocket handshake, add the cookie manually in the request headers."
-					},
-					"response": [
-						{
-							"name": "Location Ack",
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"status\": \"accepted\",\n    \"recorded_at\": \"2026-03-31T12:00:00Z\"\n}"
-						}
-					]
+					}
 				}
 			]
 		}
@@ -697,36 +324,6 @@
 		{
 			"key": "base_url",
 			"value": "http://localhost:8080/api/v1",
-			"type": "string"
-		},
-		{
-			"key": "base_ws_url",
-			"value": "ws://localhost:8080/api/v1",
-			"type": "string"
-		},
-		{
-			"key": "sos_session_id",
-			"value": "",
-			"type": "string"
-		},
-		{
-			"key": "sos_viewer_token",
-			"value": "",
-			"type": "string"
-		},
-		{
-			"key": "trusted_contact_id",
-			"value": "",
-			"type": "string"
-		},
-		{
-			"key": "trusted_contact_request_id",
-			"value": "",
-			"type": "string"
-		},
-		{
-			"key": "trusted_contact_accept_token",
-			"value": "",
 			"type": "string"
 		}
 	]

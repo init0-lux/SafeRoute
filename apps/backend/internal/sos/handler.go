@@ -23,7 +23,8 @@ type Handler struct {
 }
 
 type sessionEnvelope struct {
-	Session sessionResponse `json:"session"`
+	Session              sessionResponse              `json:"session"`
+	NotificationSummary *NotificationFanoutSummary `json:"notification_summary,omitempty"`
 }
 
 type viewerGrantEnvelope struct {
@@ -93,8 +94,11 @@ func (h *Handler) start(c *fiber.Ctx) error {
 		return writeSOSError(c, err)
 	}
 
+	summary, _ := c.Locals("sos_notification_summary").(*NotificationFanoutSummary)
+
 	return c.Status(fiber.StatusCreated).JSON(sessionEnvelope{
-		Session: newSessionResponse(session),
+		Session:             newSessionResponse(session),
+		NotificationSummary: summary,
 	})
 }
 

@@ -23,6 +23,10 @@ type AcceptRequestInput struct {
 	Token string
 }
 
+type ListTrustedContactsOutput struct {
+	Contacts []TrustedContact
+}
+
 func NewService(repo Repository) *Service {
 	return &Service{repo: repo}
 }
@@ -154,6 +158,15 @@ func (s *Service) RemoveTrustedContact(ctx context.Context, userID, contactID st
 	}
 
 	return s.repo.DeleteTrustedContact(ctx, userID, contactID)
+}
+
+func (s *Service) ListTrustedContacts(ctx context.Context, userID string) ([]TrustedContact, error) {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return nil, ErrUnauthorized
+	}
+
+	return s.repo.ListTrustedContactsByUserID(ctx, userID)
 }
 
 func normalizePhone(phone string) string {

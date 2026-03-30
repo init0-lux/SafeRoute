@@ -82,6 +82,18 @@ func (s *Service) GetUserByID(ctx context.Context, id string) (*User, error) {
 	return s.repo.GetUserByID(ctx, id)
 }
 
+func (s *Service) UpdatePushToken(ctx context.Context, userID, token string) error {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return ErrUnauthorized
+	}
+
+	token = strings.TrimSpace(token)
+	// We allow empty token to "unregister" push notifications
+
+	return s.repo.UpdatePushToken(ctx, userID, token)
+}
+
 func normalizePhone(phone string) string {
 	return strings.Join(strings.Fields(phone), "")
 }

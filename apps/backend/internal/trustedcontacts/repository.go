@@ -14,6 +14,7 @@ type Repository interface {
 	GetRequestByID(ctx context.Context, id string) (*TrustedContactRequest, error)
 	GetActiveRequestByUserPhone(ctx context.Context, userID, phone string, now time.Time) (*TrustedContactRequest, error)
 	GetTrustedContactByUserPhone(ctx context.Context, userID, phone string) (*TrustedContact, error)
+	ListTrustedContactsByUserID(ctx context.Context, userID string) ([]TrustedContact, error)
 	CompleteRequestAcceptance(ctx context.Context, request *TrustedContactRequest, contact *TrustedContact) error
 	UpdateRequestState(ctx context.Context, requestID string, status RequestStatus, respondedAt *time.Time) error
 	DeleteTrustedContact(ctx context.Context, userID, contactID string) error
@@ -77,6 +78,20 @@ func (r *GormRepository) GetTrustedContactByUserPhone(ctx context.Context, userI
 	}
 
 	return &contact, nil
+}
+
+func (r *GormRepository) ListTrustedContactsByUserID(ctx context.Context, userID string) ([]TrustedContact, error) {
+	var contacts []TrustedContact
+	if err := r.db.WithContext(ctx).
+		Select("trusted_contacts.*, users.expo_push_token AS push_token").
+		Joins("LEFT JOIN users ON users.phone = trusted_contacts.phone").
+		Where("trusted_contacts.user_id = ?", userID).
+		Order("trusted_contacts.created_at ASC").
+		Find(&contacts).Error; err != nil {
+		return nil, err
+	}
+
+	return contacts, nil
 }
 
 func (r *GormRepository) CompleteRequestAcceptance(ctx context.Context, request *TrustedContactRequest, contact *TrustedContact) error {

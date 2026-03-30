@@ -12,6 +12,7 @@ type Repository interface {
 	CreateUser(ctx context.Context, user *User) error
 	GetUserByPhone(ctx context.Context, phone string) (*User, error)
 	GetUserByID(ctx context.Context, id string) (*User, error)
+	UpdatePushToken(ctx context.Context, id string, token string) error
 }
 
 type GormRepository struct {
@@ -59,4 +60,20 @@ func (r *GormRepository) GetUserByID(ctx context.Context, id string) (*User, err
 	}
 
 	return &user, nil
+}
+
+func (r *GormRepository) UpdatePushToken(ctx context.Context, id string, token string) error {
+	result := r.db.WithContext(ctx).
+		Model(&User{}).
+		Where("id = ?", id).
+		Update("expo_push_token", token)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return ErrUserNotFound
+	}
+
+	return nil
 }
