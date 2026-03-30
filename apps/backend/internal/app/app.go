@@ -8,7 +8,9 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 )
 
-func New(cfg config.Config) *fiber.App {
+type RouteRegistrar func(fiber.Router)
+
+func New(cfg config.Config, registrars ...RouteRegistrar) *fiber.App {
 	app := fiber.New(fiber.Config{
 		AppName: cfg.AppName,
 	})
@@ -24,6 +26,12 @@ func New(cfg config.Config) *fiber.App {
 			"environment": cfg.Environment,
 		})
 	})
+
+	for _, register := range registrars {
+		if register != nil {
+			register(api)
+		}
+	}
 
 	return app
 }
