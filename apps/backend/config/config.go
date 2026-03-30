@@ -10,6 +10,7 @@ type Config struct {
 	AppName     string
 	Environment string
 	Port        string
+	DatabaseURL string
 }
 
 // Load returns runtime config using environment variables with local defaults.
@@ -18,6 +19,7 @@ func Load() Config {
 		AppName:     getEnv("APP_NAME", "SafeRoute Backend"),
 		Environment: getEnv("APP_ENV", "development"),
 		Port:        getEnv("PORT", "8080"),
+		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/saferoute?sslmode=disable"),
 	}
 }
 
