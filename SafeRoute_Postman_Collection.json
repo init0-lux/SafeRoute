@@ -1,0 +1,226 @@
+{
+	"info": {
+		"_postman_id": "7d9e8c4b-1a2b-4c3d-9e8f-0a1b2c3d4e5f",
+		"name": "SafeRoute API",
+		"description": "API collection for SafeRoute Backend - A trust-first urban safety platform.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/health",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"health"
+					]
+				},
+				"description": "Check the health status of the backend service."
+			},
+			"response": [
+				{
+					"name": "Health OK",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [],
+					"cookie": [],
+					"body": "{\n    \"status\": \"ok\",\n    \"service\": \"SafeRoute Backend\",\n    \"environment\": \"development\"\n}"
+				}
+			]
+		},
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phone\": \"+919876543210\",\n    \"email\": \"user@example.com\",\n    \"password\": \"securepassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						},
+						"description": "Register a new user account. Sets HTTP-only session cookies upon success."
+					},
+					"response": [
+						{
+							"name": "Registration Success",
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"user\": {\n        \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"phone\": \"+919876543210\",\n        \"email\": \"user@example.com\",\n        \"trust_score\": 0.3,\n        \"verified\": false\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phone\": \"+919876543210\",\n    \"password\": \"securepassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						},
+						"description": "Authenticate a user and receive session cookies."
+					},
+					"response": [
+						{
+							"name": "Login Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"user\": {\n        \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"phone\": \"+919876543210\",\n        \"email\": \"user@example.com\",\n        \"trust_score\": 0.3,\n        \"verified\": false\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Current User (Me)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/auth/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"me"
+							]
+						},
+						"description": "Retrieve profile information for the currently authenticated user. Requires valid session cookies."
+					},
+					"response": [
+						{
+							"name": "Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"user\": {\n        \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"phone\": \"+919876543210\",\n        \"email\": \"user@example.com\",\n        \"trust_score\": 0.3,\n        \"verified\": false\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/auth/refresh",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"refresh"
+							]
+						},
+						"description": "Refresh the access token using the refresh cookie."
+					},
+					"response": [
+						{
+							"name": "Refresh Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"user\": {\n        \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"phone\": \"+919876543210\",\n        \"email\": \"user@example.com\",\n        \"trust_score\": 0.3,\n        \"verified\": false\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/auth/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"logout"
+							]
+						},
+						"description": "Clear authentication cookies and end the session."
+					},
+					"response": [
+						{
+							"name": "Logout Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"status\": \"logged_out\"\n}"
+						}
+					]
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080/api/v1",
+			"type": "string"
+		}
+	]
+}
