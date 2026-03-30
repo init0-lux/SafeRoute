@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"saferoute-backend/config"
 	"saferoute-backend/internal/app"
@@ -13,10 +16,13 @@ import (
 	"saferoute-backend/internal/safety"
 	"saferoute-backend/internal/sos"
 	"saferoute-backend/internal/trust"
+	"saferoute-backend/internal/workers"
 )
 
 func main() {
 	cfg := config.Load()
+	appCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	database, err := dbconn.Open(cfg.DatabaseURL)
 	if err != nil {
@@ -87,13 +93,27 @@ func main() {
 		),
 		authMiddleware.VerifyUser(),
 	)
+	workerManager := workers.NewManager(
+		workers.NewCleanupJob(cfg.EvidenceStorageRoot, cfg.WorkerCleanupInterval, cfg.WorkerCleanupMaxAge),
+		workers.NewSafetyCacheJob(nil, cfg.WorkerSafetyRefreshInterval),
+		workers.NewIPFSUploadJob(nil, cfg.WorkerIPFSPollInterval),
+	)
 
 	server := app.New(cfg, authHandler.RegisterRoutes, reportsHandler.RegisterRoutes, trustHandler.RegisterRoutes, safetyHandler.RegisterRoutes, evidenceHandler.RegisterRoutes)
 	addr := cfg.Address()
 
+	workerManager.Start(appCtx)
+
+	go func() {
+		<-appCtx.Done()
+		if err := server.Shutdown(); err != nil {
+			slog.Error("failed to shut down server", "error", err)
+		}
+	}()
+
 	slog.Info("starting SafeRoute backend", "addr", addr)
 
-	if err := server.Listen(addr); err != nil {
+	if err := server.Listen(addr); err != nil && appCtx.Err() == nil {
 		slog.Error("backend stopped", "error", err)
 		os.Exit(1)
 	}
