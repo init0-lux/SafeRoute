@@ -5,6 +5,7 @@ import (
 	dbconn "saferoute-backend/internal/common/db"
 	"saferoute-backend/internal/reports"
 	"saferoute-backend/internal/sos"
+	"saferoute-backend/internal/trustedcontacts"
 
 	"gorm.io/gorm"
 )
@@ -24,8 +25,9 @@ func Sync(db *gorm.DB) error {
 
 	if err := db.AutoMigrate(
 		&auth.User{},
-		&auth.TrustedContact{},
 		&auth.UserVerification{},
+		&trustedcontacts.TrustedContact{},
+		&trustedcontacts.TrustedContactRequest{},
 		&sos.SOSSession{},
 		&sos.LocationPing{},
 		&reports.Report{},

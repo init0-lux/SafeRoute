@@ -25,13 +25,15 @@ The main pieces are:
 - `internal/auth/service.go`
   - register and login business logic
 - `internal/auth/repository.go`
-  - user lookup and creation via GORM
+  - user persistence via GORM
 - `internal/auth/session.go`
   - JWT issuance, parsing, and cookie handling
 - `internal/auth/middleware.go`
   - reusable `VerifyUser()` middleware for protected routes
 - `internal/auth/handler.go`
   - Fiber route handlers under `/api/v1/auth`
+
+Trusted contacts now live in a separate backend module and are documented in `apps/docs/TRUSTED_CONTACTS.md`.
 
 ## Session Design
 

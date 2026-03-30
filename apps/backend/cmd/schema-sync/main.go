@@ -29,6 +29,7 @@ func main() {
 		[]string{
 			"users",
 			"trusted_contacts",
+			"trusted_contact_requests",
 			"user_verifications",
 			"reports",
 			"evidence",

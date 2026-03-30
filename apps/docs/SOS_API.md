@@ -29,6 +29,20 @@ What it does **not** do yet:
 
 So right now it is real-time reporter-to-backend location ingest, not full real-time multi-party streaming yet.
 
+## Transport Recommendation
+
+For the current SafeRoute SOS design:
+
+- use WebSocket for reporter-to-backend live location ingest
+- do not use SSE for the initial trusted-contact alert itself
+- consider SSE only later for watcher-style backend-to-client read-only updates if we deliberately want one-way streaming
+
+Why:
+
+- the reporter must continuously send data to the backend, which SSE cannot do
+- trusted contacts may not already have an open connection, so the initial alert should come from push, SMS, phone, or email channels instead of SSE
+- once a trusted contact opens a live session view, either SSE or WebSocket could deliver server-to-client updates, but WebSocket stays more consistent with the existing SOS session model and leaves room for richer two-way live features later
+
 ## Base URLs
 
 HTTP base:

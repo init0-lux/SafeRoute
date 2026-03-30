@@ -216,6 +216,176 @@
 			]
 		},
 		{
+			"name": "Trusted Contacts",
+			"item": [
+				{
+					"name": "Create Trusted Contact Request",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const data = pm.response.json();",
+									"if (data.request && data.request.id) {",
+									"    pm.collectionVariables.set('trusted_contact_request_id', data.request.id);",
+									"}",
+									"if (data.accept_token) {",
+									"    pm.collectionVariables.set('trusted_contact_accept_token', data.accept_token);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Emergency Contact\",\n    \"phone\": \"+91 88888 22222\",\n    \"email\": \"helper@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/trusted-contacts/requests",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"trusted-contacts",
+								"requests"
+							]
+						},
+						"description": "Create a pending trusted-contact request for the authenticated user. This request stores `request.id` and `accept_token` into collection variables for local testing. In a production notification flow, that token should be embedded into the SMS/email link instead of being surfaced broadly."
+					},
+					"response": [
+						{
+							"name": "Create Trusted Contact Request Success",
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"request\": {\n        \"id\": \"request-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"name\": \"Emergency Contact\",\n        \"phone\": \"+918888822222\",\n        \"email\": \"helper@example.com\",\n        \"status\": \"pending\",\n        \"expires_at\": \"2026-04-07T12:00:00Z\",\n        \"created_at\": \"2026-03-31T12:00:00Z\"\n    },\n    \"accept_token\": \"dev-token\"\n}"
+						},
+						{
+							"name": "Pending Request Conflict",
+							"status": "Conflict",
+							"code": 409,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"trusted contact request already pending\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Accept Trusted Contact Request",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const data = pm.response.json();",
+									"if (data.contact && data.contact.id) {",
+									"    pm.collectionVariables.set('trusted_contact_id', data.contact.id);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"token\": \"{{trusted_contact_accept_token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/trusted-contacts/requests/{{trusted_contact_request_id}}/accept",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"trusted-contacts",
+								"requests",
+								"{{trusted_contact_request_id}}",
+								"accept"
+							]
+						},
+						"description": "Accept a pending trusted-contact request using the invitation token. This route is token-based and does not currently require auth."
+					},
+					"response": [
+						{
+							"name": "Accept Trusted Contact Request Success",
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"request\": {\n        \"id\": \"request-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"name\": \"Emergency Contact\",\n        \"phone\": \"+918888822222\",\n        \"email\": \"helper@example.com\",\n        \"status\": \"accepted\",\n        \"expires_at\": \"2026-04-07T12:00:00Z\",\n        \"responded_at\": \"2026-03-31T12:05:00Z\",\n        \"created_at\": \"2026-03-31T12:00:00Z\"\n    },\n    \"contact\": {\n        \"id\": \"contact-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"request_id\": \"request-123\",\n        \"name\": \"Emergency Contact\",\n        \"phone\": \"+918888822222\",\n        \"email\": \"helper@example.com\",\n        \"accepted_at\": \"2026-03-31T12:05:00Z\",\n        \"created_at\": \"2026-03-31T12:05:00Z\"\n    }\n}"
+						},
+						{
+							"name": "Invalid Token",
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"trusted contact request token is invalid\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Remove Trusted Contact",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/trusted-contacts/{{trusted_contact_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"trusted-contacts",
+								"{{trusted_contact_id}}"
+							]
+						},
+						"description": "Delete an accepted trusted contact for the authenticated user."
+					},
+					"response": [
+						{
+							"name": "Delete Trusted Contact Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"status\": \"deleted\"\n}"
+						},
+						{
+							"name": "Trusted Contact Not Found",
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"trusted contact not found\"\n}"
+						}
+					]
+				}
+			]
+		},
+		{
 			"name": "SOS",
 			"item": [
 				{
@@ -415,6 +585,21 @@
 		},
 		{
 			"key": "sos_session_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "trusted_contact_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "trusted_contact_request_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "trusted_contact_accept_token",
 			"value": "",
 			"type": "string"
 		}
