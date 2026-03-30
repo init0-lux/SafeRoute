@@ -155,6 +155,23 @@ func TestListNearbyReportsRejectsInvalidRadius(t *testing.T) {
 	}
 }
 
+func TestListNearbyReportsUsesConfiguredDefaultLimit(t *testing.T) {
+	application := newReportsTestApp(t)
+
+	seedReportForTest(t, application, "harassment", 12.9716, 77.5946)
+
+	resp := performReportsJSONRequest(t, application, http.MethodGet, "/api/v1/reports?lat=12.9716&lng=77.5946&radius=500", nil, nil)
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", resp.StatusCode)
+	}
+
+	body := decodeReportsBody(t, resp)
+	if body["limit"] != float64(20) {
+		t.Fatalf("expected default limit 20, got %#v", body["limit"])
+	}
+}
+
 func newReportsTestApp(t *testing.T) *fiber.App {
 	t.Helper()
 
@@ -176,7 +193,11 @@ func newReportsTestApp(t *testing.T) *fiber.App {
 
 	authHandler := auth.NewHandler(authService, sessionManager)
 	reportsHandler := reports.NewHandler(
-		reports.NewService(newMemoryReportsRepository()),
+		reports.NewService(newMemoryReportsRepository(), reports.ServiceConfig{
+			DefaultNearbyLimit: 20,
+			MaxNearbyLimit:     50,
+			MaxNearbyRadiusM:   5000,
+		}),
 		auth.NewMiddleware(authService, sessionManager).VerifyUser(),
 	)
 

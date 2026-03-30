@@ -51,7 +51,11 @@ func main() {
 	authHandler := auth.NewHandler(authService, sessionManager)
 	authMiddleware := auth.NewMiddleware(authService, sessionManager)
 	reportsHandler := reports.NewHandler(
-		reports.NewService(reports.NewRepository(database)),
+		reports.NewService(reports.NewRepository(database), reports.ServiceConfig{
+			DefaultNearbyLimit: cfg.ReportsNearbyDefaultLimit,
+			MaxNearbyLimit:     cfg.ReportsNearbyMaxLimit,
+			MaxNearbyRadiusM:   cfg.ReportsNearbyMaxRadiusM,
+		}),
 		authMiddleware.VerifyUser(),
 	)
 

@@ -7,14 +7,16 @@ import (
 )
 
 const maxDescriptionLength = 1000
-const (
-	defaultNearbyLimit = 20
-	maxNearbyLimit     = 50
-	maxNearbyRadius    = 5000.0
-)
 
 type Service struct {
 	repo Repository
+	cfg  ServiceConfig
+}
+
+type ServiceConfig struct {
+	DefaultNearbyLimit int
+	MaxNearbyLimit     int
+	MaxNearbyRadiusM   float64
 }
 
 type CreateReportInput struct {
@@ -79,8 +81,23 @@ type NearbyReportsPage struct {
 	Offset  int
 }
 
-func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo Repository, cfg ServiceConfig) *Service {
+	if cfg.DefaultNearbyLimit <= 0 {
+		cfg.DefaultNearbyLimit = 20
+	}
+
+	if cfg.MaxNearbyLimit <= 0 {
+		cfg.MaxNearbyLimit = 50
+	}
+
+	if cfg.MaxNearbyRadiusM <= 0 {
+		cfg.MaxNearbyRadiusM = 5000
+	}
+
+	return &Service{
+		repo: repo,
+		cfg:  cfg,
+	}
 }
 
 func (s *Service) Create(ctx context.Context, input CreateReportInput) (*CreatedReport, error) {
@@ -174,15 +191,15 @@ func (s *Service) ListNearby(ctx context.Context, input NearbyReportsInput) (*Ne
 		return nil, ErrInvalidLongitude
 	}
 
-	if input.Radius <= 0 || input.Radius > maxNearbyRadius {
+	if input.Radius <= 0 || input.Radius > s.cfg.MaxNearbyRadiusM {
 		return nil, ErrInvalidRadius
 	}
 
 	limit := input.Limit
 	if limit == 0 {
-		limit = defaultNearbyLimit
+		limit = s.cfg.DefaultNearbyLimit
 	}
-	if limit < 1 || limit > maxNearbyLimit {
+	if limit < 1 || limit > s.cfg.MaxNearbyLimit {
 		return nil, ErrInvalidLimit
 	}
 
