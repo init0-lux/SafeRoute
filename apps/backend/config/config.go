@@ -25,6 +25,8 @@ type Config struct {
 	AuthCookieDomain      string
 	AuthCookieSameSite    string
 	AuthCookieSecure      bool
+	EvidenceStorageRoot      string
+	MaxEvidenceSizeBytes     int64
 	ReportsNearbyDefaultLimit int
 	ReportsNearbyMaxLimit     int
 	ReportsNearbyMaxRadiusM   float64
@@ -54,6 +56,8 @@ func Load() Config {
 		AuthCookieDomain:      getEnv("AUTH_COOKIE_DOMAIN", ""),
 		AuthCookieSameSite:    getEnv("AUTH_COOKIE_SAME_SITE", "Lax"),
 		AuthCookieSecure:      getBoolEnv("AUTH_COOKIE_SECURE", environment == "production"),
+		EvidenceStorageRoot:      getEnv("EVIDENCE_STORAGE_ROOT", "/tmp/saferoute-evidence"),
+		MaxEvidenceSizeBytes:     getInt64Env("MAX_EVIDENCE_SIZE_BYTES", 10485760),
 		ReportsNearbyDefaultLimit: getIntEnv("REPORTS_NEARBY_DEFAULT_LIMIT", 20),
 		ReportsNearbyMaxLimit:     getIntEnv("REPORTS_NEARBY_MAX_LIMIT", 50),
 		ReportsNearbyMaxRadiusM:   getFloatEnv("REPORTS_NEARBY_MAX_RADIUS_METERS", 5000),
@@ -117,6 +121,20 @@ func getIntEnv(key string, fallback int) int {
 	}
 
 	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return fallback
+	}
+
+	return parsed
+}
+
+func getInt64Env(key string, fallback int64) int64 {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+
+	parsed, err := strconv.ParseInt(value, 10, 64)
 	if err != nil {
 		return fallback
 	}

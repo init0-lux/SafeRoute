@@ -8,7 +8,9 @@ import (
 	"saferoute-backend/internal/app"
 	"saferoute-backend/internal/auth"
 	dbconn "saferoute-backend/internal/common/db"
+	"saferoute-backend/internal/evidence"
 	"saferoute-backend/internal/reports"
+	"saferoute-backend/internal/sos"
 	"saferoute-backend/internal/trust"
 )
 
@@ -52,17 +54,30 @@ func main() {
 	authHandler := auth.NewHandler(authService, sessionManager)
 	authMiddleware := auth.NewMiddleware(authService, sessionManager)
 	trustService := trust.NewService(trust.NewRepository(database))
+	reportsService := reports.NewService(reports.NewRepository(database), reports.ServiceConfig{
+		DefaultNearbyLimit: cfg.ReportsNearbyDefaultLimit,
+		MaxNearbyLimit:     cfg.ReportsNearbyMaxLimit,
+		MaxNearbyRadiusM:   cfg.ReportsNearbyMaxRadiusM,
+	}, trustService)
 	reportsHandler := reports.NewHandler(
-		reports.NewService(reports.NewRepository(database), reports.ServiceConfig{
-			DefaultNearbyLimit: cfg.ReportsNearbyDefaultLimit,
-			MaxNearbyLimit:     cfg.ReportsNearbyMaxLimit,
-			MaxNearbyRadiusM:   cfg.ReportsNearbyMaxRadiusM,
-		}, trustService),
+		reportsService,
 		authMiddleware.VerifyUser(),
 	)
 	trustHandler := trust.NewHandler(trustService, authMiddleware.VerifyUser())
+	evidenceHandler := evidence.NewHandler(
+		evidence.NewService(
+			evidence.NewRepository(database),
+			evidence.NewLocalStorage(cfg.EvidenceStorageRoot),
+			reportsService,
+			sos.NewRepository(database),
+			evidence.ServiceConfig{
+				MaxFileSizeBytes: cfg.MaxEvidenceSizeBytes,
+			},
+		),
+		authMiddleware.VerifyUser(),
+	)
 
-	server := app.New(cfg, authHandler.RegisterRoutes, reportsHandler.RegisterRoutes, trustHandler.RegisterRoutes)
+	server := app.New(cfg, authHandler.RegisterRoutes, reportsHandler.RegisterRoutes, trustHandler.RegisterRoutes, evidenceHandler.RegisterRoutes)
 	addr := cfg.Address()
 
 	slog.Info("starting SafeRoute backend", "addr", addr)

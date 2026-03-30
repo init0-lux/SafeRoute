@@ -17,6 +17,7 @@ import (
 	"saferoute-backend/internal/auth"
 	"saferoute-backend/internal/reports"
 
+	"github.com/google/uuid"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -133,7 +134,7 @@ func TestGetReportByIDReturnsEvidenceIDs(t *testing.T) {
 	body := decodeReportsBody(t, resp)
 	report := body["report"].(map[string]any)
 	evidenceIDs := report["evidence_ids"].([]any)
-	if len(evidenceIDs) != 1 || evidenceIDs[0] != "evidence-1" {
+	if len(evidenceIDs) != 1 || evidenceIDs[0] != "33333333-3333-3333-3333-333333333333" {
 		t.Fatalf("expected evidence_ids to contain seeded evidence, got %#v", report["evidence_ids"])
 	}
 
@@ -145,10 +146,20 @@ func TestGetReportByIDReturnsEvidenceIDs(t *testing.T) {
 func TestGetReportByIDReturnsNotFound(t *testing.T) {
 	application := newReportsTestApp(t)
 
-	resp := performReportsJSONRequest(t, application, http.MethodGet, "/api/v1/reports/missing-report", nil, nil)
+	resp := performReportsJSONRequest(t, application, http.MethodGet, "/api/v1/reports/44444444-4444-4444-4444-444444444444", nil, nil)
 
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected status 404, got %d", resp.StatusCode)
+	}
+}
+
+func TestGetReportByIDRejectsInvalidUUID(t *testing.T) {
+	application := newReportsTestApp(t)
+
+	resp := performReportsJSONRequest(t, application, http.MethodGet, "/api/v1/reports/report-123", nil, nil)
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", resp.StatusCode)
 	}
 }
 
@@ -314,7 +325,7 @@ func (r *memoryAuthRepository) CreateUser(_ context.Context, user *auth.User) er
 
 	r.nextID++
 	copyUser := *user
-	copyUser.ID = fmt.Sprintf("user-%d", r.nextID)
+	copyUser.ID = uuid.NewString()
 	r.byID[copyUser.ID] = &copyUser
 	r.byPhone[copyUser.Phone] = &copyUser
 	user.ID = copyUser.ID
@@ -367,7 +378,7 @@ func (r *memoryReportsRepository) Create(_ context.Context, input reports.Create
 	defer r.mu.Unlock()
 
 	r.nextID++
-	reportID := fmt.Sprintf("report-%d", r.nextID)
+	reportID := uuid.NewString()
 	report := reports.StoredReport{
 		ID:          reportID,
 		UserID:      input.UserID,
@@ -383,7 +394,7 @@ func (r *memoryReportsRepository) Create(_ context.Context, input reports.Create
 	r.reports[reportID] = report
 
 	if len(r.reports) == 1 {
-		r.evidenceBy[reportID] = []string{"evidence-1"}
+		r.evidenceBy[reportID] = []string{"33333333-3333-3333-3333-333333333333"}
 	}
 
 	copyReport := report

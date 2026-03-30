@@ -115,6 +115,9 @@ func EnsureSchemaArtifacts(db *gorm.DB) error {
 		END
 		$$`,
 		"ALTER TABLE evidence DROP COLUMN IF EXISTS client_encrypted",
+		"CREATE INDEX IF NOT EXISTS evidence_report_idx ON evidence (report_id, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS evidence_session_idx ON evidence (session_id, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS evidence_user_created_idx ON evidence (user_id, created_at DESC)",
 		"CREATE INDEX IF NOT EXISTS reports_location_idx ON reports USING GIST(location)",
 		"CREATE INDEX IF NOT EXISTS reports_created_at_idx ON reports (created_at DESC)",
 		"CREATE INDEX IF NOT EXISTS reports_occurred_at_idx ON reports (occurred_at DESC)",

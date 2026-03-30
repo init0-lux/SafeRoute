@@ -459,6 +459,129 @@
 					]
 				}
 			]
+		},
+		{
+			"name": "Evidence",
+			"item": [
+				{
+					"name": "Upload Evidence To Report",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const body = pm.response.json();",
+									"    if (body.evidence && body.evidence.id) {",
+									"        pm.collectionVariables.set('evidence_id', body.evidence.id);",
+									"    }",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "report_id",
+									"value": "{{report_id}}",
+									"type": "text"
+								},
+								{
+									"key": "file",
+									"type": "file",
+									"src": ""
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/evidence/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"evidence",
+								"upload"
+							]
+						},
+						"description": "Upload evidence linked to a report. Use a supported image or audio file. On success, the Postman test script stores `evidence_id` automatically."
+					},
+					"response": [
+						{
+							"name": "Upload Evidence Success",
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"evidence\": {\n        \"id\": \"evidence-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"report_id\": \"report-123\",\n        \"type\": \"image\",\n        \"url\": \"http://localhost:8080/api/v1/evidence/evidence-123/content\",\n        \"hash\": \"6c1d6f0a4d4e9f0d66f8f8f1c1e1b89b0f7c2f39cb8e4f34d70b7fbe95d7a4c3\",\n        \"media_type\": \"image/png\",\n        \"size_bytes\": 2048,\n        \"original_filename\": \"photo.png\",\n        \"created_at\": \"2026-03-31T10:40:00Z\"\n    }\n}"
+						},
+						{
+							"name": "Upload Evidence Bad Request",
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"unsupported media type\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Evidence Metadata",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/evidence/{{evidence_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"evidence",
+								"{{evidence_id}}"
+							]
+						},
+						"description": "Fetch evidence metadata for the authenticated owner."
+					},
+					"response": [
+						{
+							"name": "Evidence Metadata Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"evidence\": {\n        \"id\": \"evidence-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"report_id\": \"report-123\",\n        \"type\": \"image\",\n        \"url\": \"http://localhost:8080/api/v1/evidence/evidence-123/content\",\n        \"hash\": \"6c1d6f0a4d4e9f0d66f8f8f1c1e1b89b0f7c2f39cb8e4f34d70b7fbe95d7a4c3\",\n        \"media_type\": \"image/png\",\n        \"size_bytes\": 2048,\n        \"original_filename\": \"photo.png\",\n        \"created_at\": \"2026-03-31T10:40:00Z\"\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Evidence Content",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/evidence/{{evidence_id}}/content",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"evidence",
+								"{{evidence_id}}",
+								"content"
+							]
+						},
+						"description": "Download the raw evidence file for the authenticated owner."
+					},
+					"response": []
+				}
+			]
 		}
 	],
 	"variable": [
@@ -469,7 +592,12 @@
 		},
 		{
 			"key": "report_id",
-			"value": "report-123",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "evidence_id",
+			"value": "",
 			"type": "string"
 		}
 	]

@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const maxDescriptionLength = 1000
@@ -182,6 +184,9 @@ func (s *Service) Create(ctx context.Context, input CreateReportInput) (*Created
 func (s *Service) GetByID(ctx context.Context, id string) (*ReportDetails, error) {
 	reportID := strings.TrimSpace(id)
 	if reportID == "" {
+		return nil, ErrInvalidReportID
+	}
+	if _, err := uuid.Parse(reportID); err != nil {
 		return nil, ErrInvalidReportID
 	}
 
