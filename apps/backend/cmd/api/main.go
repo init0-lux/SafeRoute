@@ -8,6 +8,7 @@ import (
 	"saferoute-backend/internal/app"
 	"saferoute-backend/internal/auth"
 	dbconn "saferoute-backend/internal/common/db"
+	"saferoute-backend/internal/sos"
 )
 
 func main() {
@@ -46,12 +47,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	authHandler := auth.NewHandler(
-		auth.NewService(auth.NewRepository(database)),
-		sessionManager,
-	)
+	authService := auth.NewService(auth.NewRepository(database))
+	authMiddleware := auth.NewMiddleware(authService, sessionManager)
+	authHandler := auth.NewHandler(authService, sessionManager)
+	sosHandler := sos.NewHandler(sos.NewService(sos.NewRepository(database)), authMiddleware)
 
-	server := app.New(cfg, authHandler.RegisterRoutes)
+	server := app.New(cfg, authHandler.RegisterRoutes, sosHandler.RegisterRoutes)
 	addr := cfg.Address()
 
 	slog.Info("starting SafeRoute backend", "addr", addr)

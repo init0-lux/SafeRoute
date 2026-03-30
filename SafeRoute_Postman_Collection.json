@@ -214,12 +214,208 @@
 					]
 				}
 			]
+		},
+		{
+			"name": "SOS",
+			"item": [
+				{
+					"name": "Start SOS Session",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const data = pm.response.json();",
+									"if (data.session && data.session.id) {",
+									"    pm.collectionVariables.set('sos_session_id', data.session.id);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{base_url}}/sos/start",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"sos",
+								"start"
+							]
+						},
+						"description": "Create a new SOS session for the currently authenticated user. Only one active SOS session is allowed per user at a time. On success, this request stores `session.id` into the `sos_session_id` collection variable."
+					},
+					"response": [
+						{
+							"name": "Start Success",
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"session\": {\n        \"id\": \"sos-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"status\": \"active\",\n        \"started_at\": \"2026-03-31T12:00:00Z\",\n        \"ended_at\": null\n    }\n}"
+						},
+						{
+							"name": "Active Session Conflict",
+							"status": "Conflict",
+							"code": 409,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"active sos session already exists\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Get SOS Session",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/sos/{{sos_session_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"sos",
+								"{{sos_session_id}}"
+							]
+						},
+						"description": "Fetch the current SOS session state. Owner-authenticated only in the current backend implementation."
+					},
+					"response": [
+						{
+							"name": "Get Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"session\": {\n        \"id\": \"sos-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"status\": \"active\",\n        \"started_at\": \"2026-03-31T12:00:00Z\",\n        \"ended_at\": null\n    }\n}"
+						},
+						{
+							"name": "Not Found",
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"sos session not found\"\n}"
+						}
+					]
+				},
+				{
+					"name": "End SOS Session",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{base_url}}/sos/{{sos_session_id}}/end",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"sos",
+								"{{sos_session_id}}",
+								"end"
+							]
+						},
+						"description": "End the active SOS session for the authenticated owner."
+					},
+					"response": [
+						{
+							"name": "End Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"session\": {\n        \"id\": \"sos-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"status\": \"ended\",\n        \"started_at\": \"2026-03-31T12:00:00Z\",\n        \"ended_at\": \"2026-03-31T12:05:00Z\"\n    }\n}"
+						},
+						{
+							"name": "Already Ended",
+							"status": "Conflict",
+							"code": 409,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"sos session already ended\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Stream SOS Location (WebSocket)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"lat\": 12.9716,\n    \"lng\": 77.5946,\n    \"ts\": \"2026-03-31T12:00:00Z\"\n}"
+						},
+						"url": {
+							"raw": "{{base_ws_url}}/sos/{{sos_session_id}}/stream",
+							"host": [
+								"{{base_ws_url}}"
+							],
+							"path": [
+								"sos",
+								"{{sos_session_id}}",
+								"stream"
+							]
+						},
+						"description": "Owner-only WebSocket route for SOS reporter location ingest. Use this after login and after creating a session. Send JSON messages like the sample body above. Expected ack: `{ \"status\": \"accepted\", \"recorded_at\": \"2026-03-31T12:00:00Z\" }`. If Postman does not automatically forward the localhost auth cookie during the WebSocket handshake, add the cookie manually in the request headers."
+					},
+					"response": [
+						{
+							"name": "Location Ack",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"status\": \"accepted\",\n    \"recorded_at\": \"2026-03-31T12:00:00Z\"\n}"
+						}
+					]
+				}
+			]
 		}
 	],
 	"variable": [
 		{
 			"key": "base_url",
 			"value": "http://localhost:8080/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "base_ws_url",
+			"value": "ws://localhost:8080/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "sos_session_id",
+			"value": "",
 			"type": "string"
 		}
 	]
