@@ -11,8 +11,6 @@ import (
 
 const (
 	baseTrustScore             = 0.30
-	reportBonusPerReport       = 0.02
-	maxReportsBonus            = 0.20
 	corroborationBonusPerMatch = 0.03
 	maxCorroborationBonus      = 0.30
 	verifiedBonus              = 0.15
@@ -24,7 +22,6 @@ type Service struct {
 
 type TrustBreakdown struct {
 	Base               float64 `json:"base"`
-	ReportsBonus       float64 `json:"reports_bonus"`
 	CorroborationBonus float64 `json:"corroboration_bonus"`
 	VerifiedBonus      float64 `json:"verified_bonus"`
 }
@@ -57,7 +54,6 @@ func (s *Service) GetByUserID(ctx context.Context, userID string) (*Snapshot, er
 	breakdown := calculateBreakdown(*user)
 	score := clampTrustScore(
 		breakdown.Base +
-			breakdown.ReportsBonus +
 			breakdown.CorroborationBonus +
 			breakdown.VerifiedBonus,
 	)
@@ -116,7 +112,6 @@ func (s *Service) refreshScore(ctx context.Context, userID string) (*Snapshot, e
 	breakdown := calculateBreakdown(*user)
 	score := clampTrustScore(
 		breakdown.Base +
-			breakdown.ReportsBonus +
 			breakdown.CorroborationBonus +
 			breakdown.VerifiedBonus,
 	)
@@ -140,7 +135,6 @@ func (s *Service) refreshScore(ctx context.Context, userID string) (*Snapshot, e
 }
 
 func calculateBreakdown(user auth.User) TrustBreakdown {
-	reportsBonus := math.Min(float64(user.ReportCount)*reportBonusPerReport, maxReportsBonus)
 	corroborationBonus := math.Min(float64(user.CorroborationCount)*corroborationBonusPerMatch, maxCorroborationBonus)
 	verifiedBonusValue := 0.0
 	if user.Verified {
@@ -149,7 +143,6 @@ func calculateBreakdown(user auth.User) TrustBreakdown {
 
 	return TrustBreakdown{
 		Base:               baseTrustScore,
-		ReportsBonus:       reportsBonus,
 		CorroborationBonus: corroborationBonus,
 		VerifiedBonus:      verifiedBonusValue,
 	}

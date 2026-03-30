@@ -407,7 +407,7 @@
 							"_postman_previewlanguage": "json",
 							"header": [],
 							"cookie": [],
-							"body": "{\n    \"score\": 0.32,\n    \"reports_count\": 1,\n    \"corroboration_count\": 0,\n    \"verified\": false,\n    \"updated_at\": \"2026-03-31T10:30:00Z\",\n    \"breakdown\": {\n        \"base\": 0.3,\n        \"reports_bonus\": 0.02,\n        \"corroboration_bonus\": 0,\n        \"verified_bonus\": 0\n    }\n}"
+							"body": "{\n    \"score\": 0.3,\n    \"reports_count\": 1,\n    \"corroboration_count\": 0,\n    \"verified\": false,\n    \"updated_at\": \"2026-03-31T10:30:00Z\",\n    \"breakdown\": {\n        \"base\": 0.3,\n        \"corroboration_bonus\": 0,\n        \"verified_bonus\": 0\n    }\n}"
 						},
 						{
 							"name": "Trust Me Unauthorized",
@@ -454,7 +454,7 @@
 							"_postman_previewlanguage": "json",
 							"header": [],
 							"cookie": [],
-							"body": "{\n    \"score\": 0.47,\n    \"reports_count\": 1,\n    \"corroboration_count\": 0,\n    \"verified\": true,\n    \"updated_at\": \"2026-03-31T10:35:00Z\",\n    \"breakdown\": {\n        \"base\": 0.3,\n        \"reports_bonus\": 0.02,\n        \"corroboration_bonus\": 0,\n        \"verified_bonus\": 0.15\n    }\n}"
+							"body": "{\n    \"score\": 0.45,\n    \"reports_count\": 1,\n    \"corroboration_count\": 0,\n    \"verified\": true,\n    \"updated_at\": \"2026-03-31T10:35:00Z\",\n    \"breakdown\": {\n        \"base\": 0.3,\n        \"corroboration_bonus\": 0,\n        \"verified_bonus\": 0.15\n    }\n}"
 						}
 					]
 				}

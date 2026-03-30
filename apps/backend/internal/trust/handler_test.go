@@ -115,8 +115,13 @@ func TestReportCreationUpdatesTrustCounts(t *testing.T) {
 	if body["reports_count"] != float64(1) {
 		t.Fatalf("expected reports_count 1, got %#v", body["reports_count"])
 	}
-	if body["score"] != 0.32 {
-		t.Fatalf("expected score 0.32 after first report, got %#v", body["score"])
+	if body["score"] != 0.3 {
+		t.Fatalf("expected score to remain 0.3 after first report, got %#v", body["score"])
+	}
+
+	breakdown := body["breakdown"].(map[string]any)
+	if _, exists := breakdown["reports_bonus"]; exists {
+		t.Fatalf("expected reports_bonus to be absent, got %#v", breakdown["reports_bonus"])
 	}
 }
 
