@@ -20,12 +20,17 @@ var allowedReportTypes = map[string]struct{}{
 type Service struct {
 	repo Repository
 	cfg  ServiceConfig
+	trust ReportTrustRecorder
 }
 
 type ServiceConfig struct {
 	DefaultNearbyLimit int
 	MaxNearbyLimit     int
 	MaxNearbyRadiusM   float64
+}
+
+type ReportTrustRecorder interface {
+	RecordReportSubmission(ctx context.Context, userID string) error
 }
 
 type CreateReportInput struct {
@@ -92,7 +97,7 @@ type NearbyReportsPage struct {
 	Offset  int
 }
 
-func NewService(repo Repository, cfg ServiceConfig) *Service {
+func NewService(repo Repository, cfg ServiceConfig, trust ReportTrustRecorder) *Service {
 	if cfg.DefaultNearbyLimit <= 0 {
 		cfg.DefaultNearbyLimit = 20
 	}
@@ -108,6 +113,7 @@ func NewService(repo Repository, cfg ServiceConfig) *Service {
 	return &Service{
 		repo: repo,
 		cfg:  cfg,
+		trust: trust,
 	}
 }
 
@@ -151,6 +157,12 @@ func (s *Service) Create(ctx context.Context, input CreateReportInput) (*Created
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	if s.trust != nil {
+		if err := s.trust.RecordReportSubmission(ctx, userID); err != nil {
+			return nil, err
+		}
 	}
 
 	return &CreatedReport{

@@ -227,7 +227,7 @@ func newReportsTestApp(t *testing.T) *fiber.App {
 			DefaultNearbyLimit: 20,
 			MaxNearbyLimit:     50,
 			MaxNearbyRadiusM:   5000,
-		}),
+		}, nil),
 		auth.NewMiddleware(authService, sessionManager).VerifyUser(),
 	)
 

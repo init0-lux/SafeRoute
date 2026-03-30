@@ -9,6 +9,7 @@ import (
 	"saferoute-backend/internal/auth"
 	dbconn "saferoute-backend/internal/common/db"
 	"saferoute-backend/internal/reports"
+	"saferoute-backend/internal/trust"
 )
 
 func main() {
@@ -50,16 +51,18 @@ func main() {
 	authService := auth.NewService(auth.NewRepository(database))
 	authHandler := auth.NewHandler(authService, sessionManager)
 	authMiddleware := auth.NewMiddleware(authService, sessionManager)
+	trustService := trust.NewService(trust.NewRepository(database))
 	reportsHandler := reports.NewHandler(
 		reports.NewService(reports.NewRepository(database), reports.ServiceConfig{
 			DefaultNearbyLimit: cfg.ReportsNearbyDefaultLimit,
 			MaxNearbyLimit:     cfg.ReportsNearbyMaxLimit,
 			MaxNearbyRadiusM:   cfg.ReportsNearbyMaxRadiusM,
-		}),
+		}, trustService),
 		authMiddleware.VerifyUser(),
 	)
+	trustHandler := trust.NewHandler(trustService, authMiddleware.VerifyUser())
 
-	server := app.New(cfg, authHandler.RegisterRoutes, reportsHandler.RegisterRoutes)
+	server := app.New(cfg, authHandler.RegisterRoutes, reportsHandler.RegisterRoutes, trustHandler.RegisterRoutes)
 	addr := cfg.Address()
 
 	slog.Info("starting SafeRoute backend", "addr", addr)
