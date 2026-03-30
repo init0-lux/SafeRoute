@@ -94,6 +94,67 @@ func TestCreateReportRejectsInvalidCoordinates(t *testing.T) {
 	}
 }
 
+func TestGetReportByIDReturnsEvidenceIDs(t *testing.T) {
+	application := newReportsTestApp(t)
+	reportID := seedReportForTest(t, application, "harassment", 12.9716, 77.5946)
+
+	resp := performReportsJSONRequest(t, application, http.MethodGet, "/api/v1/reports/"+reportID, nil, nil)
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", resp.StatusCode)
+	}
+
+	body := decodeReportsBody(t, resp)
+	report := body["report"].(map[string]any)
+	evidenceIDs := report["evidence_ids"].([]any)
+	if len(evidenceIDs) != 1 || evidenceIDs[0] != "evidence-1" {
+		t.Fatalf("expected evidence_ids to contain seeded evidence, got %#v", report["evidence_ids"])
+	}
+}
+
+func TestGetReportByIDReturnsNotFound(t *testing.T) {
+	application := newReportsTestApp(t)
+
+	resp := performReportsJSONRequest(t, application, http.MethodGet, "/api/v1/reports/missing-report", nil, nil)
+
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected status 404, got %d", resp.StatusCode)
+	}
+}
+
+func TestListNearbyReportsReturnsPaginatedResults(t *testing.T) {
+	application := newReportsTestApp(t)
+
+	seedReportForTest(t, application, "harassment", 12.9716, 77.5946)
+	seedReportForTest(t, application, "unsafe_area", 12.9717, 77.5947)
+
+	resp := performReportsJSONRequest(t, application, http.MethodGet, "/api/v1/reports?lat=12.9716&lng=77.5946&radius=500&limit=1&offset=0", nil, nil)
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", resp.StatusCode)
+	}
+
+	body := decodeReportsBody(t, resp)
+	reportsBody := body["reports"].([]any)
+	if len(reportsBody) != 1 {
+		t.Fatalf("expected 1 paginated report, got %d", len(reportsBody))
+	}
+
+	if body["count"] != float64(2) {
+		t.Fatalf("expected total count 2, got %#v", body["count"])
+	}
+}
+
+func TestListNearbyReportsRejectsInvalidRadius(t *testing.T) {
+	application := newReportsTestApp(t)
+
+	resp := performReportsJSONRequest(t, application, http.MethodGet, "/api/v1/reports?lat=12.9716&lng=77.5946&radius=0", nil, nil)
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", resp.StatusCode)
+	}
+}
+
 func newReportsTestApp(t *testing.T) *fiber.App {
 	t.Helper()
 
@@ -237,29 +298,153 @@ func (r *memoryAuthRepository) GetUserByID(_ context.Context, id string) (*auth.
 }
 
 type memoryReportsRepository struct {
-	mu     sync.Mutex
-	nextID int
+	mu         sync.Mutex
+	nextID     int
+	reports    map[string]reports.StoredReport
+	evidenceBy map[string][]string
 }
 
 func newMemoryReportsRepository() *memoryReportsRepository {
-	return &memoryReportsRepository{}
+	return &memoryReportsRepository{
+		reports:    make(map[string]reports.StoredReport),
+		evidenceBy: make(map[string][]string),
+	}
 }
 
-func (r *memoryReportsRepository) Create(_ context.Context, input reports.CreateParams) (*reports.Report, error) {
+func (r *memoryReportsRepository) Create(_ context.Context, input reports.CreateParams) (*reports.StoredReport, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	r.nextID++
 	reportID := fmt.Sprintf("report-%d", r.nextID)
-	report := &reports.Report{
+	report := reports.StoredReport{
 		ID:          reportID,
 		UserID:      input.UserID,
 		Category:    input.Category,
 		Description: input.Description,
+		Latitude:    input.Latitude,
+		Longitude:   input.Longitude,
 		OccurredAt:  input.OccurredAt,
 		CreatedAt:   input.OccurredAt,
 		Source:      input.Source,
 	}
+	r.reports[reportID] = report
 
-	return report, nil
+	if len(r.reports) == 1 {
+		r.evidenceBy[reportID] = []string{"evidence-1"}
+	}
+
+	copyReport := report
+	return &copyReport, nil
+}
+
+func (r *memoryReportsRepository) GetByID(_ context.Context, id string) (*reports.StoredReport, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	report, exists := r.reports[id]
+	if !exists {
+		return nil, reports.ErrReportNotFound
+	}
+
+	copyReport := report
+	return &copyReport, nil
+}
+
+func (r *memoryReportsRepository) ListEvidenceIDs(_ context.Context, reportID string) ([]string, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	evidenceIDs := append([]string(nil), r.evidenceBy[reportID]...)
+	return evidenceIDs, nil
+}
+
+func (r *memoryReportsRepository) ListNearby(_ context.Context, input reports.NearbyParams) ([]reports.NearbyReportRow, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	rows := make([]reports.NearbyReportRow, 0)
+	for _, report := range r.reports {
+		if distanceMeters(report.Latitude, report.Longitude, input.Latitude, input.Longitude) > input.Radius {
+			continue
+		}
+
+		rows = append(rows, reports.NearbyReportRow{
+			StoredReport:   report,
+			TrustScore:     0.3,
+			DistanceMeters: distanceMeters(report.Latitude, report.Longitude, input.Latitude, input.Longitude),
+		})
+	}
+
+	if input.Offset >= len(rows) {
+		return []reports.NearbyReportRow{}, nil
+	}
+
+	end := input.Offset + input.Limit
+	if end > len(rows) {
+		end = len(rows)
+	}
+
+	return append([]reports.NearbyReportRow(nil), rows[input.Offset:end]...), nil
+}
+
+func (r *memoryReportsRepository) CountNearby(_ context.Context, input reports.NearbyParams) (int64, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var count int64
+	for _, report := range r.reports {
+		if distanceMeters(report.Latitude, report.Longitude, input.Latitude, input.Longitude) <= input.Radius {
+			count++
+		}
+	}
+
+	return count, nil
+}
+
+func seedReportForTest(t *testing.T, application *fiber.App, reportType string, lat, lng float64) string {
+	t.Helper()
+
+	registerResp := performReportsJSONRequest(t, application, http.MethodPost, "/api/v1/auth/register", map[string]string{
+		"phone":    fmt.Sprintf("+91 90000 %05d", time.Now().UnixNano()%100000),
+		"password": "supersecret",
+	}, nil)
+
+	accessCookie := findReportsCookie(t, registerResp, "test_access")
+
+	resp := performReportsJSONRequest(t, application, http.MethodPost, "/api/v1/reports", map[string]any{
+		"type":        reportType,
+		"description": "seed report",
+		"lat":         lat,
+		"lng":         lng,
+	}, []*http.Cookie{accessCookie})
+
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("expected seeded report status 201, got %d", resp.StatusCode)
+	}
+
+	body := decodeReportsBody(t, resp)
+	report := body["report"].(map[string]any)
+	return report["id"].(string)
+}
+
+func distanceMeters(lat1, lng1, lat2, lng2 float64) float64 {
+	const metersPerDegree = 111320.0
+
+	dLat := lat1 - lat2
+	dLng := lng1 - lng2
+	return metersPerDegree * sqrt(dLat*dLat+dLng*dLng)
+}
+
+func sqrt(value float64) float64 {
+	if value == 0 {
+		return 0
+	}
+
+	z := value
+	for i := 0; i < 10; i++ {
+		z -= (z*z - value) / (2 * z)
+	}
+
+	return z
 }

@@ -263,6 +263,103 @@
 							"body": "{\n    \"error\": \"unauthorized\"\n}"
 						}
 					]
+				},
+				{
+					"name": "Get Report By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/reports/{{report_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"reports",
+								"{{report_id}}"
+							]
+						},
+						"description": "Fetch a single report by its ID. Set the collection variable `report_id` from a previously created report."
+					},
+					"response": [
+						{
+							"name": "Get Report Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"report\": {\n        \"id\": \"report-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"type\": \"harassment\",\n        \"description\": \"man following me near the bus stop\",\n        \"lat\": 12.9716,\n        \"lng\": 77.5946,\n        \"occurred_at\": \"2026-03-31T10:30:00Z\",\n        \"created_at\": \"2026-03-31T10:30:00Z\",\n        \"source\": \"app\",\n        \"evidence_ids\": [\n            \"evidence-1\"\n        ]\n    }\n}"
+						},
+						{
+							"name": "Get Report Not Found",
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"report not found\"\n}"
+						}
+					]
+				},
+				{
+					"name": "List Nearby Reports",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/reports?lat=12.9716&lng=77.5946&radius=500&limit=20&offset=0",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"reports"
+							],
+							"query": [
+								{
+									"key": "lat",
+									"value": "12.9716"
+								},
+								{
+									"key": "lng",
+									"value": "77.5946"
+								},
+								{
+									"key": "radius",
+									"value": "500"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								}
+							]
+						},
+						"description": "List nearby reports using radius search. Results are paginated and sorted by trust score and recency."
+					},
+					"response": [
+						{
+							"name": "Nearby Reports Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"reports\": [\n        {\n            \"id\": \"report-123\",\n            \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n            \"type\": \"harassment\",\n            \"description\": \"man following me near the bus stop\",\n            \"lat\": 12.9716,\n            \"lng\": 77.5946,\n            \"occurred_at\": \"2026-03-31T10:30:00Z\",\n            \"created_at\": \"2026-03-31T10:30:00Z\",\n            \"source\": \"app\",\n            \"trust_score\": 0.3,\n            \"distance_meters\": 0\n        }\n    ],\n    \"count\": 1,\n    \"limit\": 20,\n    \"offset\": 0\n}"
+						},
+						{
+							"name": "Nearby Reports Bad Request",
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"radius must be greater than 0 and no more than 5000 meters\"\n}"
+						}
+					]
 				}
 			]
 		}
@@ -271,6 +368,11 @@
 		{
 			"key": "base_url",
 			"value": "http://localhost:8080/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "report_id",
+			"value": "report-123",
 			"type": "string"
 		}
 	]

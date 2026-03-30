@@ -7,6 +7,11 @@ import (
 )
 
 const maxDescriptionLength = 1000
+const (
+	defaultNearbyLimit = 20
+	maxNearbyLimit     = 50
+	maxNearbyRadius    = 5000.0
+)
 
 type Service struct {
 	repo Repository
@@ -30,6 +35,48 @@ type CreatedReport struct {
 	OccurredAt  time.Time
 	CreatedAt   time.Time
 	Source      string
+}
+
+type ReportDetails struct {
+	ID          string
+	UserID      string
+	Type        string
+	Description *string
+	Latitude    float64
+	Longitude   float64
+	OccurredAt  time.Time
+	CreatedAt   time.Time
+	Source      string
+	EvidenceIDs []string
+}
+
+type NearbyReportsInput struct {
+	Latitude  float64
+	Longitude float64
+	Radius    float64
+	Limit     int
+	Offset    int
+}
+
+type NearbyReport struct {
+	ID             string
+	UserID         string
+	Type           string
+	Description    *string
+	Latitude       float64
+	Longitude      float64
+	OccurredAt     time.Time
+	CreatedAt      time.Time
+	Source         string
+	DistanceMeters float64
+	TrustScore     float64
+}
+
+type NearbyReportsPage struct {
+	Reports []NearbyReport
+	Count   int64
+	Limit   int
+	Offset  int
 }
 
 func NewService(repo Repository) *Service {
@@ -88,6 +135,106 @@ func (s *Service) Create(ctx context.Context, input CreateReportInput) (*Created
 	}, nil
 }
 
+func (s *Service) GetByID(ctx context.Context, id string) (*ReportDetails, error) {
+	reportID := strings.TrimSpace(id)
+	if reportID == "" {
+		return nil, ErrInvalidReportID
+	}
+
+	report, err := s.repo.GetByID(ctx, reportID)
+	if err != nil {
+		return nil, err
+	}
+
+	evidenceIDs, err := s.repo.ListEvidenceIDs(ctx, reportID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ReportDetails{
+		ID:          report.ID,
+		UserID:      derefString(report.UserID),
+		Type:        report.Category,
+		Description: report.Description,
+		Latitude:    report.Latitude,
+		Longitude:   report.Longitude,
+		OccurredAt:  report.OccurredAt,
+		CreatedAt:   report.CreatedAt,
+		Source:      report.Source,
+		EvidenceIDs: evidenceIDs,
+	}, nil
+}
+
+func (s *Service) ListNearby(ctx context.Context, input NearbyReportsInput) (*NearbyReportsPage, error) {
+	if input.Latitude < -90 || input.Latitude > 90 {
+		return nil, ErrInvalidLatitude
+	}
+
+	if input.Longitude < -180 || input.Longitude > 180 {
+		return nil, ErrInvalidLongitude
+	}
+
+	if input.Radius <= 0 || input.Radius > maxNearbyRadius {
+		return nil, ErrInvalidRadius
+	}
+
+	limit := input.Limit
+	if limit == 0 {
+		limit = defaultNearbyLimit
+	}
+	if limit < 1 || limit > maxNearbyLimit {
+		return nil, ErrInvalidLimit
+	}
+
+	if input.Offset < 0 {
+		return nil, ErrInvalidOffset
+	}
+
+	rows, err := s.repo.ListNearby(ctx, NearbyParams{
+		Latitude:  input.Latitude,
+		Longitude: input.Longitude,
+		Radius:    input.Radius,
+		Limit:     limit,
+		Offset:    input.Offset,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	count, err := s.repo.CountNearby(ctx, NearbyParams{
+		Latitude:  input.Latitude,
+		Longitude: input.Longitude,
+		Radius:    input.Radius,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	reports := make([]NearbyReport, 0, len(rows))
+	for _, row := range rows {
+		reports = append(reports, NearbyReport{
+			ID:             row.ID,
+			UserID:         derefString(row.UserID),
+			Type:           row.Category,
+			Description:    row.Description,
+			Latitude:       row.Latitude,
+			Longitude:      row.Longitude,
+			OccurredAt:     row.OccurredAt,
+			CreatedAt:      row.CreatedAt,
+			Source:         row.Source,
+			DistanceMeters: row.DistanceMeters,
+			TrustScore:     row.TrustScore,
+		})
+	}
+
+	return &NearbyReportsPage{
+		Reports: reports,
+		Count:   count,
+		Limit:   limit,
+		Offset:  input.Offset,
+	}, nil
+}
+
 func normalizeReportType(value string) string {
 	return strings.ToLower(strings.TrimSpace(value))
 }
@@ -99,4 +246,12 @@ func normalizeDescription(value string) *string {
 	}
 
 	return &trimmed
+}
+
+func derefString(value *string) string {
+	if value == nil {
+		return ""
+	}
+
+	return *value
 }
