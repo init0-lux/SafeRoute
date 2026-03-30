@@ -26,15 +26,15 @@ type createReportResponse struct {
 }
 
 type reportResponse struct {
-	ID          string  `json:"id"`
-	UserID      string  `json:"user_id"`
-	Type        string  `json:"type"`
-	Description *string `json:"description,omitempty"`
-	Latitude    float64 `json:"lat"`
-	Longitude   float64 `json:"lng"`
-	OccurredAt  string  `json:"occurred_at"`
-	CreatedAt   string  `json:"created_at"`
-	Source      string  `json:"source"`
+	ID          string   `json:"id"`
+	UserID      string   `json:"user_id"`
+	Type        string   `json:"type"`
+	Description *string  `json:"description,omitempty"`
+	Latitude    float64  `json:"lat"`
+	Longitude   float64  `json:"lng"`
+	OccurredAt  string   `json:"occurred_at"`
+	CreatedAt   string   `json:"created_at"`
+	Source      string   `json:"source"`
 	EvidenceIDs []string `json:"evidence_ids,omitempty"`
 	TrustScore  *float64 `json:"trust_score,omitempty"`
 	DistanceM   *float64 `json:"distance_meters,omitempty"`
@@ -95,6 +95,7 @@ func (h *Handler) create(c *fiber.Ctx) error {
 			OccurredAt:  report.OccurredAt,
 			CreatedAt:   report.CreatedAt,
 			Source:      report.Source,
+			TrustScore:  &report.TrustScore,
 		}),
 	})
 }
@@ -117,6 +118,7 @@ func (h *Handler) getByID(c *fiber.Ctx) error {
 			CreatedAt:   report.CreatedAt,
 			Source:      report.Source,
 			EvidenceIDs: report.EvidenceIDs,
+			TrustScore:  &report.TrustScore,
 		}),
 	})
 }
@@ -192,6 +194,7 @@ func writeReportError(c *fiber.Ctx, err error) error {
 	case errors.Is(err, ErrReportNotFound):
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
 	case errors.Is(err, ErrInvalidReportType),
+		errors.Is(err, ErrUnsupportedReportType),
 		errors.Is(err, ErrInvalidLatitude),
 		errors.Is(err, ErrInvalidLongitude),
 		errors.Is(err, ErrInvalidRadius),

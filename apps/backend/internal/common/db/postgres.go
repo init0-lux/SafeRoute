@@ -98,6 +98,22 @@ func EnsureStatusEnums(db *gorm.DB) error {
 
 func EnsureSchemaArtifacts(db *gorm.DB) error {
 	statements := []string{
+		`DO $$
+		BEGIN
+			IF EXISTS (
+				SELECT 1
+				FROM information_schema.columns
+				WHERE table_schema = 'public'
+				  AND table_name = 'reports'
+				  AND column_name = 'location'
+				  AND udt_name <> 'geography'
+			) THEN
+				ALTER TABLE reports
+					ALTER COLUMN location TYPE geography(POINT,4326)
+					USING ST_SetSRID(location, 4326)::geography;
+			END IF;
+		END
+		$$`,
 		"ALTER TABLE evidence DROP COLUMN IF EXISTS client_encrypted",
 		"CREATE INDEX IF NOT EXISTS reports_location_idx ON reports USING GIST(location)",
 		"CREATE INDEX IF NOT EXISTS reports_created_at_idx ON reports (created_at DESC)",

@@ -8,6 +8,15 @@ import (
 
 const maxDescriptionLength = 1000
 
+var allowedReportTypes = map[string]struct{}{
+	"harassment":         {},
+	"unsafe_area":        {},
+	"stalking":           {},
+	"assault":            {},
+	"theft":              {},
+	"suspicious_activity": {},
+}
+
 type Service struct {
 	repo Repository
 	cfg  ServiceConfig
@@ -37,6 +46,7 @@ type CreatedReport struct {
 	OccurredAt  time.Time
 	CreatedAt   time.Time
 	Source      string
+	TrustScore  float64
 }
 
 type ReportDetails struct {
@@ -50,6 +60,7 @@ type ReportDetails struct {
 	CreatedAt   time.Time
 	Source      string
 	EvidenceIDs []string
+	TrustScore  float64
 }
 
 type NearbyReportsInput struct {
@@ -110,6 +121,9 @@ func (s *Service) Create(ctx context.Context, input CreateReportInput) (*Created
 	if reportType == "" {
 		return nil, ErrInvalidReportType
 	}
+	if !isAllowedReportType(reportType) {
+		return nil, ErrUnsupportedReportType
+	}
 
 	if input.Latitude < -90 || input.Latitude > 90 {
 		return nil, ErrInvalidLatitude
@@ -149,6 +163,7 @@ func (s *Service) Create(ctx context.Context, input CreateReportInput) (*Created
 		OccurredAt:  report.OccurredAt,
 		CreatedAt:   report.CreatedAt,
 		Source:      report.Source,
+		TrustScore:  report.TrustScore,
 	}, nil
 }
 
@@ -179,6 +194,7 @@ func (s *Service) GetByID(ctx context.Context, id string) (*ReportDetails, error
 		CreatedAt:   report.CreatedAt,
 		Source:      report.Source,
 		EvidenceIDs: evidenceIDs,
+		TrustScore:  report.TrustScore,
 	}, nil
 }
 
@@ -254,6 +270,11 @@ func (s *Service) ListNearby(ctx context.Context, input NearbyReportsInput) (*Ne
 
 func normalizeReportType(value string) string {
 	return strings.ToLower(strings.TrimSpace(value))
+}
+
+func isAllowedReportType(value string) bool {
+	_, ok := allowedReportTypes[value]
+	return ok
 }
 
 func normalizeDescription(value string) *string {

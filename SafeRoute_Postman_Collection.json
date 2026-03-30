@@ -220,6 +220,22 @@
 			"item": [
 				{
 					"name": "Create Report",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const body = pm.response.json();",
+									"    if (body.report && body.report.id) {",
+									"        pm.collectionVariables.set('report_id', body.report.id);",
+									"    }",
+									"}"
+								]
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [
@@ -241,7 +257,7 @@
 								"reports"
 							]
 						},
-						"description": "Create a new incident report. This request requires the auth cookies set by Register or Login to already exist in Postman's cookie jar for localhost."
+						"description": "Create a new incident report. This request requires the auth cookies set by Register or Login to already exist in Postman's cookie jar for localhost. On success, the Postman test script stores `report_id` automatically."
 					},
 					"response": [
 						{
@@ -251,7 +267,7 @@
 							"_postman_previewlanguage": "json",
 							"header": [],
 							"cookie": [],
-							"body": "{\n    \"report\": {\n        \"id\": \"report-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"type\": \"harassment\",\n        \"description\": \"man following me near the bus stop\",\n        \"lat\": 12.9716,\n        \"lng\": 77.5946,\n        \"occurred_at\": \"2026-03-31T10:30:00Z\",\n        \"created_at\": \"2026-03-31T10:30:00Z\",\n        \"source\": \"app\"\n    }\n}"
+							"body": "{\n    \"report\": {\n        \"id\": \"report-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"type\": \"harassment\",\n        \"description\": \"man following me near the bus stop\",\n        \"lat\": 12.9716,\n        \"lng\": 77.5946,\n        \"occurred_at\": \"2026-03-31T10:30:00Z\",\n        \"created_at\": \"2026-03-31T10:30:00Z\",\n        \"source\": \"app\",\n        \"trust_score\": 0.3\n    }\n}"
 						},
 						{
 							"name": "Create Report Unauthorized",
@@ -289,7 +305,7 @@
 							"_postman_previewlanguage": "json",
 							"header": [],
 							"cookie": [],
-							"body": "{\n    \"report\": {\n        \"id\": \"report-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"type\": \"harassment\",\n        \"description\": \"man following me near the bus stop\",\n        \"lat\": 12.9716,\n        \"lng\": 77.5946,\n        \"occurred_at\": \"2026-03-31T10:30:00Z\",\n        \"created_at\": \"2026-03-31T10:30:00Z\",\n        \"source\": \"app\",\n        \"evidence_ids\": [\n            \"evidence-1\"\n        ]\n    }\n}"
+							"body": "{\n    \"report\": {\n        \"id\": \"report-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"type\": \"harassment\",\n        \"description\": \"man following me near the bus stop\",\n        \"lat\": 12.9716,\n        \"lng\": 77.5946,\n        \"occurred_at\": \"2026-03-31T10:30:00Z\",\n        \"created_at\": \"2026-03-31T10:30:00Z\",\n        \"source\": \"app\",\n        \"evidence_ids\": [\n            \"evidence-1\"\n        ],\n        \"trust_score\": 0.3\n    }\n}"
 						},
 						{
 							"name": "Get Report Not Found",
@@ -357,7 +373,7 @@
 							"_postman_previewlanguage": "json",
 							"header": [],
 							"cookie": [],
-							"body": "{\n    \"error\": \"radius must be greater than 0 and no more than 5000 meters\"\n}"
+							"body": "{\n    \"error\": \"radius must be greater than 0 and within the configured maximum\"\n}"
 						}
 					]
 				}

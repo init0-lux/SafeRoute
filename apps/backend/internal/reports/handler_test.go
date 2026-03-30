@@ -70,6 +70,10 @@ func TestCreateReportCreatesAuthenticatedReport(t *testing.T) {
 	if report["lng"] != 77.5946 {
 		t.Fatalf("expected longitude 77.5946, got %#v", report["lng"])
 	}
+
+	if report["trust_score"] != 0.3 {
+		t.Fatalf("expected trust_score 0.3, got %#v", report["trust_score"])
+	}
 }
 
 func TestCreateReportRejectsInvalidCoordinates(t *testing.T) {
@@ -94,6 +98,28 @@ func TestCreateReportRejectsInvalidCoordinates(t *testing.T) {
 	}
 }
 
+func TestCreateReportRejectsUnsupportedType(t *testing.T) {
+	application := newReportsTestApp(t)
+
+	registerResp := performReportsJSONRequest(t, application, http.MethodPost, "/api/v1/auth/register", map[string]string{
+		"phone":    "+91 77777 11111",
+		"password": "supersecret",
+	}, nil)
+
+	accessCookie := findReportsCookie(t, registerResp, "test_access")
+
+	resp := performReportsJSONRequest(t, application, http.MethodPost, "/api/v1/reports", map[string]any{
+		"type":        "noise_complaint",
+		"description": "unsupported type",
+		"lat":         12.9716,
+		"lng":         77.5946,
+	}, []*http.Cookie{accessCookie})
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", resp.StatusCode)
+	}
+}
+
 func TestGetReportByIDReturnsEvidenceIDs(t *testing.T) {
 	application := newReportsTestApp(t)
 	reportID := seedReportForTest(t, application, "harassment", 12.9716, 77.5946)
@@ -109,6 +135,10 @@ func TestGetReportByIDReturnsEvidenceIDs(t *testing.T) {
 	evidenceIDs := report["evidence_ids"].([]any)
 	if len(evidenceIDs) != 1 || evidenceIDs[0] != "evidence-1" {
 		t.Fatalf("expected evidence_ids to contain seeded evidence, got %#v", report["evidence_ids"])
+	}
+
+	if report["trust_score"] != 0.3 {
+		t.Fatalf("expected trust_score 0.3, got %#v", report["trust_score"])
 	}
 }
 
@@ -348,6 +378,7 @@ func (r *memoryReportsRepository) Create(_ context.Context, input reports.Create
 		OccurredAt:  input.OccurredAt,
 		CreatedAt:   input.OccurredAt,
 		Source:      input.Source,
+		TrustScore:  0.3,
 	}
 	r.reports[reportID] = report
 
@@ -392,7 +423,6 @@ func (r *memoryReportsRepository) ListNearby(_ context.Context, input reports.Ne
 
 		rows = append(rows, reports.NearbyReportRow{
 			StoredReport:   report,
-			TrustScore:     0.3,
 			DistanceMeters: distanceMeters(report.Latitude, report.Longitude, input.Latitude, input.Longitude),
 		})
 	}

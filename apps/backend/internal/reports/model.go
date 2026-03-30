@@ -22,7 +22,7 @@ type Report struct {
 	User            *auth.User       `gorm:"constraint:OnDelete:SET NULL;foreignKey:UserID;references:ID"`
 	Category        string           `gorm:"type:text;not null"`
 	Description     *string          `gorm:"type:text"`
-	Location        string           `gorm:"type:geometry(Point,4326);not null"`
+	Location        string           `gorm:"type:geography(POINT,4326);not null"`
 	Address         *string          `gorm:"type:text"`
 	OccurredAt      time.Time        `gorm:"type:timestamptz;not null"`
 	CreatedAt       time.Time        `gorm:"type:timestamptz;not null;default:now()"`
