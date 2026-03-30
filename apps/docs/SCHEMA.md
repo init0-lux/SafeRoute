@@ -16,6 +16,7 @@ The schema is currently **GORM-driven**.
 
 - Models:
   - `apps/backend/internal/auth/model.go`
+  - `apps/backend/internal/trustedcontacts/model.go`
   - `apps/backend/internal/sos/model.go`
   - `apps/backend/internal/reports/model.go`
 - Sync command:
@@ -57,6 +58,11 @@ The schema also creates PostgreSQL enum types for status fields that should stay
   - `under_review`
   - `escalated`
   - `resolved`
+- `trusted_contact_request_status`
+  - `pending`
+  - `accepted`
+  - `cancelled`
+  - `expired`
 
 ## How The Tables Map To The Product
 
@@ -64,8 +70,10 @@ The schema also creates PostgreSQL enum types for status fields that should stay
 
 - `users`
   - the core account record
+- `trusted_contact_requests`
+  - pending invitations before someone becomes a trusted contact
 - `trusted_contacts`
-  - the people a user wants alerted during SOS
+  - accepted trusted contacts used during SOS notification fan-out
 - `user_verifications`
   - optional verification records used to improve trust without storing raw identity documents
 
@@ -106,31 +114,61 @@ Represents a SafeRoute account. This table is the anchor for identity, trust, re
 
 Product relationships:
 
+- one user owns many trusted-contact requests
 - one user owns many trusted contacts
 - one user can have many verification attempts/records
 - one user can submit many reports
 - one user can start many SOS sessions
 
+### `trusted_contact_requests`
+
+Represents the invitation or approval step before a person becomes a real trusted contact.
+
+| Field | Type | Product meaning |
+| --- | --- | --- |
+| `id` | `uuid` | Stable identifier for the invitation itself. |
+| `user_id` | `uuid` | The SafeRoute user who wants to add this trusted contact. |
+| `name` | `text` | Human-readable label chosen by the requester. |
+| `phone` | `text` | Primary delivery target for the invitation and later SOS fallback. |
+| `email` | `text` | Optional invitation and notification channel. |
+| `status` | `trusted_contact_request_status` | Tracks whether the invitation is pending, accepted, cancelled, or expired. |
+| `invite_token_hash` | `text` | Hashed acceptance token used for secure invite links without storing the raw token. |
+| `expires_at` | `timestamptz` | Time after which the invitation should no longer be accepted. |
+| `responded_at` | `timestamptz` | When the recipient accepted or otherwise completed the request lifecycle. |
+| `accepted_contact_id` | `uuid` | Optional link to the accepted `trusted_contacts` row after success. |
+| `created_at` | `timestamptz` | Audit timestamp for when the invitation was created. |
+
+Why this table exists separately:
+
+- sending an invite is not the same as having a trusted contact
+- the product needs to track pending and expired invitations
+- accepted SOS recipients should only come from completed requests
+- invitation links need token and expiry metadata that do not belong on the final contact record
+
 ### `trusted_contacts`
 
-Represents the personal safety network for a user. These records power the SOS alert flow.
+Represents the accepted personal safety network for a user. These records power the SOS alert flow once an invitation has been accepted.
 
 | Field | Type | Product meaning |
 | --- | --- | --- |
 | `id` | `uuid` | Internal identifier for a trusted-contact record. |
 | `user_id` | `uuid` | Connects the contact back to the user who added them. |
+| `request_id` | `uuid` | Optional back-reference to the request that created this accepted relationship. |
 | `name` | `text` | Human-readable label shown in the app when managing contacts and sending alerts. |
 | `phone` | `text` | Main emergency delivery target for SMS-based SOS notifications. |
 | `email` | `text` | Optional secondary channel for future alerting or evidence sharing. |
+| `accepted_at` | `timestamptz` | When the contact actually became active for SOS use. |
 | `created_at` | `timestamptz` | Audit trail for when this contact was added. |
 
 Why the unique constraint matters:
 
 - `user_id + phone` prevents the same user from adding the same contact repeatedly
 
-Why cascade delete matters:
+Why this table still exists in addition to `trusted_contact_requests`:
 
-- if a user account is removed, their trusted contact list should disappear with it
+- requests describe the invitation workflow
+- `trusted_contacts` is the smaller, cleaner table the SOS system should query at runtime
+- accepted contacts can remain stable even after the request has served its purpose
 
 ### `user_verifications`
 
@@ -268,6 +306,8 @@ Why both `recorded_at` and `created_at` exist:
 
 Here is the main shape of the data model:
 
+- `users -> trusted_contact_requests`
+  - one-to-many
 - `users -> trusted_contacts`
   - one-to-many
 - `users -> user_verifications`
@@ -291,6 +331,12 @@ Important indexes created by the current schema sync:
 
 - `users.phone`
   - fast lookup during login and account checks
+- `trusted_contact_requests.invite_token_hash` unique
+  - supports secure token-based invite acceptance
+- `trusted_contact_requests (user_id, phone, status)`
+  - supports duplicate-pending-request prevention
+- `trusted_contact_requests.expires_at`
+  - supports expiry cleanup and active-request checks
 - `trusted_contacts (user_id, phone)` unique
   - prevents duplicate trusted contacts per user
 - `user_verifications.user_id`

@@ -12,19 +12,9 @@ type User struct {
 	CorroborationCount  int                `gorm:"not null;default:0"`
 	Verified            bool               `gorm:"not null;default:false"`
 	VerifiedAt          *time.Time         `gorm:"type:timestamptz"`
+	ExpoPushToken       *string            `gorm:"column:expo_push_token;type:text"`
 	CreatedAt           time.Time          `gorm:"type:timestamptz;not null;default:now()"`
-	TrustedContacts     []TrustedContact   `gorm:"constraint:OnDelete:CASCADE;"`
 	VerificationRecords []UserVerification `gorm:"constraint:OnDelete:CASCADE;"`
-}
-
-type TrustedContact struct {
-	ID        string    `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
-	UserID    string    `gorm:"type:uuid;not null;uniqueIndex:ux_trusted_contacts_user_phone,priority:1"`
-	Name      string    `gorm:"type:text;not null"`
-	Phone     string    `gorm:"type:text;not null;uniqueIndex:ux_trusted_contacts_user_phone,priority:2"`
-	Email     *string   `gorm:"type:text"`
-	CreatedAt time.Time `gorm:"type:timestamptz;not null;default:now()"`
-	User      User      `gorm:"constraint:OnDelete:CASCADE;foreignKey:UserID;references:ID"`
 }
 
 // optional external verification (integration with aadhar etc later)
@@ -42,10 +32,6 @@ type UserVerification struct {
 
 func (User) TableName() string {
 	return "users"
-}
-
-func (TrustedContact) TableName() string {
-	return "trusted_contacts"
 }
 
 func (UserVerification) TableName() string {

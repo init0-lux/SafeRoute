@@ -25,6 +25,7 @@ type Config struct {
 	AuthCookieDomain      string
 	AuthCookieSameSite    string
 	AuthCookieSecure      bool
+	SOSViewerBaseURL      string
 }
 
 // Load returns runtime config using environment variables with local defaults.
@@ -51,6 +52,7 @@ func Load() Config {
 		AuthCookieDomain:      getEnv("AUTH_COOKIE_DOMAIN", ""),
 		AuthCookieSameSite:    getEnv("AUTH_COOKIE_SAME_SITE", "Lax"),
 		AuthCookieSecure:      getBoolEnv("AUTH_COOKIE_SECURE", environment == "production"),
+		SOSViewerBaseURL:      getEnv("SOS_VIEWER_BASE_URL", "http://localhost:8080/api/v1/sos/viewer/stream"),
 	}
 }
 

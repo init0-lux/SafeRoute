@@ -40,6 +40,13 @@ func EnsureCustomTypes(db *gorm.DB) error {
 			END IF;
 		END
 		$$`,
+		`DO $$
+		BEGIN
+			IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'trusted_contact_request_status') THEN
+				CREATE TYPE trusted_contact_request_status AS ENUM ('pending', 'accepted', 'cancelled', 'expired');
+			END IF;
+		END
+		$$`,
 	}
 
 	for _, statement := range statements {
@@ -85,6 +92,23 @@ func EnsureStatusEnums(db *gorm.DB) error {
 			END IF;
 		END
 		$$`,
+		`DO $$
+		BEGIN
+			IF EXISTS (
+				SELECT 1
+				FROM information_schema.columns
+				WHERE table_schema = 'public'
+				  AND table_name = 'trusted_contact_requests'
+				  AND column_name = 'status'
+				  AND udt_name <> 'trusted_contact_request_status'
+			) THEN
+				ALTER TABLE trusted_contact_requests
+					ALTER COLUMN status DROP DEFAULT,
+					ALTER COLUMN status TYPE trusted_contact_request_status USING status::trusted_contact_request_status,
+					ALTER COLUMN status SET DEFAULT 'pending'::trusted_contact_request_status;
+			END IF;
+		END
+		$$`,
 	}
 
 	for _, statement := range statements {
@@ -99,10 +123,14 @@ func EnsureStatusEnums(db *gorm.DB) error {
 func EnsureSchemaArtifacts(db *gorm.DB) error {
 	statements := []string{
 		"ALTER TABLE evidence DROP COLUMN IF EXISTS client_encrypted",
+		"ALTER TABLE trusted_contacts ADD COLUMN IF NOT EXISTS request_id uuid",
+		"ALTER TABLE trusted_contacts ADD COLUMN IF NOT EXISTS accepted_at timestamptz NOT NULL DEFAULT now()",
+		"ALTER TABLE trusted_contact_requests ADD COLUMN IF NOT EXISTS accepted_contact_id uuid",
 		"CREATE INDEX IF NOT EXISTS reports_location_idx ON reports USING GIST(location)",
 		"CREATE INDEX IF NOT EXISTS reports_occurred_at_idx ON reports (occurred_at DESC)",
 		"CREATE INDEX IF NOT EXISTS location_pings_session_idx ON location_pings (session_id, recorded_at DESC)",
 		"CREATE INDEX IF NOT EXISTS complaint_events_report_created_idx ON complaint_events (report_id, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS trusted_contact_requests_user_phone_status_idx ON trusted_contact_requests (user_id, phone, status)",
 	}
 
 	for _, statement := range statements {
