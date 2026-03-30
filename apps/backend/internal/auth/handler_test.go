@@ -100,6 +100,62 @@ func TestRefreshReissuesSessionCookies(t *testing.T) {
 	}
 }
 
+func TestVerifyUserMiddlewareProtectsReusableRoute(t *testing.T) {
+	repo := newMemoryRepository()
+	service := auth.NewService(repo)
+	user, err := service.Register(context.Background(), auth.RegisterInput{
+		Phone:    "+919777766666",
+		Password: "supersecret",
+	})
+	if err != nil {
+		t.Fatalf("failed to seed user: %v", err)
+	}
+
+	sessionManager, err := auth.NewSessionManager(auth.SessionConfig{
+		AccessSecret:      "access-secret",
+		RefreshSecret:     "refresh-secret",
+		AccessTTL:         15 * time.Minute,
+		RefreshTTL:        7 * 24 * time.Hour,
+		AccessCookieName:  "test_access",
+		RefreshCookieName: "test_refresh",
+		CookieSameSite:    "Lax",
+	})
+	if err != nil {
+		t.Fatalf("failed to create session manager: %v", err)
+	}
+
+	pair, err := sessionManager.IssuePair(*user)
+	if err != nil {
+		t.Fatalf("failed to issue session pair: %v", err)
+	}
+
+	authMiddleware := auth.NewMiddleware(service, sessionManager)
+	application := fiber.New()
+	application.Get("/protected", authMiddleware.VerifyUser(), func(c *fiber.Ctx) error {
+		currentUser, ok := auth.CurrentUser(c)
+		if !ok {
+			return c.SendStatus(fiber.StatusUnauthorized)
+		}
+
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"phone": currentUser.Phone,
+		})
+	})
+
+	resp := performJSONRequest(t, application, http.MethodGet, "/protected", nil, []*http.Cookie{
+		{Name: "test_access", Value: pair.AccessToken},
+	})
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected protected route status 200, got %d", resp.StatusCode)
+	}
+
+	body := decodeBody(t, resp)
+	if body["phone"] != "+919777766666" {
+		t.Fatalf("expected protected route to expose verified user, got %#v", body["phone"])
+	}
+}
+
 func newTestApp(t *testing.T) *fiber.App {
 	t.Helper()
 	repo := newMemoryRepository()

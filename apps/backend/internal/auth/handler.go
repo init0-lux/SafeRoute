@@ -11,6 +11,7 @@ const currentUserKey = "current_user"
 type Handler struct {
 	service  *Service
 	sessions *SessionManager
+	auth     *Middleware
 }
 
 type authRequest struct {
@@ -35,6 +36,7 @@ func NewHandler(service *Service, sessions *SessionManager) *Handler {
 	return &Handler{
 		service:  service,
 		sessions: sessions,
+		auth:     NewMiddleware(service, sessions),
 	}
 }
 
@@ -44,7 +46,7 @@ func (h *Handler) RegisterRoutes(router fiber.Router) {
 	authRoutes.Post("/login", h.login)
 	authRoutes.Post("/refresh", h.refresh)
 	authRoutes.Post("/logout", h.logout)
-	authRoutes.Get("/me", h.requireAuth, h.me)
+	authRoutes.Get("/me", h.auth.VerifyUser(), h.me)
 }
 
 func (h *Handler) register(c *fiber.Ctx) error {
@@ -61,7 +63,7 @@ func (h *Handler) register(c *fiber.Ctx) error {
 		Password: req.Password,
 	})
 	if err != nil {
-		return h.writeAuthError(c, err)
+		return writeAuthError(c, err)
 	}
 
 	return h.signIn(c, user, fiber.StatusCreated)
@@ -80,7 +82,7 @@ func (h *Handler) login(c *fiber.Ctx) error {
 		Password: req.Password,
 	})
 	if err != nil {
-		return h.writeAuthError(c, err)
+		return writeAuthError(c, err)
 	}
 
 	return h.signIn(c, user, fiber.StatusOK)
@@ -89,13 +91,13 @@ func (h *Handler) login(c *fiber.Ctx) error {
 func (h *Handler) refresh(c *fiber.Ctx) error {
 	refreshToken, err := h.sessions.RefreshTokenFromCookies(c)
 	if err != nil {
-		return h.writeAuthError(c, err)
+		return writeAuthError(c, err)
 	}
 
 	claims, err := h.sessions.ParseRefreshToken(refreshToken)
 	if err != nil {
 		h.sessions.ClearSessionCookies(c)
-		return h.writeAuthError(c, err)
+		return writeAuthError(c, err)
 	}
 
 	user, err := h.service.GetUserByID(c.UserContext(), claims.Subject)
@@ -104,7 +106,7 @@ func (h *Handler) refresh(c *fiber.Ctx) error {
 			h.sessions.ClearSessionCookies(c)
 		}
 
-		return h.writeAuthError(c, err)
+		return writeAuthError(c, err)
 	}
 
 	return h.signIn(c, user, fiber.StatusOK)
@@ -118,34 +120,14 @@ func (h *Handler) logout(c *fiber.Ctx) error {
 }
 
 func (h *Handler) me(c *fiber.Ctx) error {
-	user, ok := c.Locals(currentUserKey).(*User)
-	if !ok || user == nil {
-		return h.writeAuthError(c, ErrUnauthorized)
+	user, ok := CurrentUser(c)
+	if !ok {
+		return writeAuthError(c, ErrUnauthorized)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(authResponse{
 		User: newUserResponse(user),
 	})
-}
-
-func (h *Handler) requireAuth(c *fiber.Ctx) error {
-	accessToken, err := h.sessions.AccessTokenFromCookies(c)
-	if err != nil {
-		return h.writeAuthError(c, err)
-	}
-
-	claims, err := h.sessions.ParseAccessToken(accessToken)
-	if err != nil {
-		return h.writeAuthError(c, err)
-	}
-
-	user, err := h.service.GetUserByID(c.UserContext(), claims.Subject)
-	if err != nil {
-		return h.writeAuthError(c, err)
-	}
-
-	c.Locals(currentUserKey, user)
-	return c.Next()
 }
 
 func (h *Handler) signIn(c *fiber.Ctx, user *User, status int) error {
@@ -163,7 +145,7 @@ func (h *Handler) signIn(c *fiber.Ctx, user *User, status int) error {
 	})
 }
 
-func (h *Handler) writeAuthError(c *fiber.Ctx, err error) error {
+func writeAuthError(c *fiber.Ctx, err error) error {
 	switch {
 	case errors.Is(err, ErrInvalidPhone), errors.Is(err, ErrInvalidPassword):
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
