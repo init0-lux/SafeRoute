@@ -281,10 +281,12 @@ func (r *memoryAuthRepository) GetUserByID(_ context.Context, id string) (*auth.
 }
 
 type memorySOSRepository struct {
-	mu       sync.Mutex
-	nextID   int
-	sessions map[string]*sos.SOSSession
-	pings    map[string][]storedPing
+	mu              sync.Mutex
+	nextID          int
+	sessions        map[string]*sos.SOSSession
+	pings           map[string][]storedPing
+	viewerGrants    map[string]*sos.SOSViewerGrant
+	trustedContacts map[string]map[string]struct{}
 }
 
 type storedPing struct {
@@ -295,8 +297,10 @@ type storedPing struct {
 
 func newMemorySOSRepository() *memorySOSRepository {
 	return &memorySOSRepository{
-		sessions: make(map[string]*sos.SOSSession),
-		pings:    make(map[string][]storedPing),
+		sessions:        make(map[string]*sos.SOSSession),
+		pings:           make(map[string][]storedPing),
+		viewerGrants:    make(map[string]*sos.SOSViewerGrant),
+		trustedContacts: make(map[string]map[string]struct{}),
 	}
 }
 
@@ -363,6 +367,84 @@ func (r *memorySOSRepository) CreateLocationPing(_ context.Context, sessionID st
 	return nil
 }
 
+func (r *memorySOSRepository) CreateViewerGrant(_ context.Context, grant *sos.SOSViewerGrant) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, existing := range r.viewerGrants {
+		if existing.SessionID == grant.SessionID &&
+			existing.TrustedContactID == grant.TrustedContactID &&
+			existing.RevokedAt == nil &&
+			existing.ExpiresAt.After(time.Now().UTC()) {
+			return sos.ErrViewerGrantConflict
+		}
+	}
+
+	r.nextID++
+	clone := cloneViewerGrant(grant)
+	clone.ID = fmt.Sprintf("viewer-%d", r.nextID)
+	if clone.CreatedAt.IsZero() {
+		clone.CreatedAt = time.Now().UTC()
+	}
+	r.viewerGrants[clone.ID] = clone
+	grant.ID = clone.ID
+	grant.CreatedAt = clone.CreatedAt
+
+	return nil
+}
+
+func (r *memorySOSRepository) GetActiveViewerGrantBySessionContact(_ context.Context, sessionID, trustedContactID string, now time.Time) (*sos.SOSViewerGrant, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, grant := range r.viewerGrants {
+		if grant.SessionID == sessionID &&
+			grant.TrustedContactID == trustedContactID &&
+			grant.RevokedAt == nil &&
+			grant.ExpiresAt.After(now) {
+			return cloneViewerGrant(grant), nil
+		}
+	}
+
+	return nil, sos.ErrViewerGrantNotFound
+}
+
+func (r *memorySOSRepository) GetViewerGrantByToken(_ context.Context, tokenHash string) (*sos.SOSViewerGrant, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, grant := range r.viewerGrants {
+		if grant.TokenHash == tokenHash {
+			return cloneViewerGrant(grant), nil
+		}
+	}
+
+	return nil, sos.ErrViewerGrantNotFound
+}
+
+func (r *memorySOSRepository) IsTrustedContactOwnedByUser(_ context.Context, userID, trustedContactID string) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	contacts := r.trustedContacts[userID]
+	if contacts == nil {
+		return false, nil
+	}
+
+	_, exists := contacts[trustedContactID]
+	return exists, nil
+}
+
+func (r *memorySOSRepository) AddTrustedContact(userID, trustedContactID string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, exists := r.trustedContacts[userID]; !exists {
+		r.trustedContacts[userID] = make(map[string]struct{})
+	}
+	r.trustedContacts[userID][trustedContactID] = struct{}{}
+}
+
 func (r *memorySOSRepository) LocationPingCount(sessionID string) int {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -380,6 +462,16 @@ func cloneSession(session *sos.SOSSession) *sos.SOSSession {
 	if session.EndedAt != nil {
 		endedAt := *session.EndedAt
 		clone.EndedAt = &endedAt
+	}
+
+	return &clone
+}
+
+func cloneViewerGrant(grant *sos.SOSViewerGrant) *sos.SOSViewerGrant {
+	clone := *grant
+	if grant.RevokedAt != nil {
+		revokedAt := *grant.RevokedAt
+		clone.RevokedAt = &revokedAt
 	}
 
 	return &clone

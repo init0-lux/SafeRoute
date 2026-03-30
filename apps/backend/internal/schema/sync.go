@@ -30,6 +30,7 @@ func Sync(db *gorm.DB) error {
 		&trustedcontacts.TrustedContactRequest{},
 		&sos.SOSSession{},
 		&sos.LocationPing{},
+		&sos.SOSViewerGrant{},
 		&reports.Report{},
 		&reports.Evidence{},
 		&reports.ComplaintEvent{},

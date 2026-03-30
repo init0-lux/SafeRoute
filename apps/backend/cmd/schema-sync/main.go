@@ -36,6 +36,7 @@ func main() {
 			"complaint_events",
 			"sos_sessions",
 			"location_pings",
+			"sos_viewer_grants",
 		},
 	)
 }

@@ -488,6 +488,127 @@
 					]
 				},
 				{
+					"name": "Create SOS Viewer Grant",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const data = pm.response.json();",
+									"if (data.viewer_token) {",
+									"    pm.collectionVariables.set('sos_viewer_token', data.viewer_token);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"trusted_contact_id\": \"{{trusted_contact_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/sos/{{sos_session_id}}/viewers",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"sos",
+								"{{sos_session_id}}",
+								"viewers"
+							]
+						},
+						"description": "Create a dedicated SOS viewer grant for one accepted trusted contact on the current session. This stores `viewer_token` into the `sos_viewer_token` collection variable. The viewer token is distinct from the trusted-contact invite token and is scoped to one SOS session."
+					},
+					"response": [
+						{
+							"name": "Create Viewer Grant Success",
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"grant\": {\n        \"id\": \"viewer-123\",\n        \"session_id\": \"sos-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"trusted_contact_id\": \"contact-123\",\n        \"expires_at\": \"2026-03-31T14:00:00Z\",\n        \"created_at\": \"2026-03-31T12:00:05Z\"\n    },\n    \"viewer_token\": \"viewer-token\",\n    \"sse_url\": \"/api/v1/sos/viewer/stream?token=viewer-token\"\n}"
+						},
+						{
+							"name": "Viewer Grant Conflict",
+							"status": "Conflict",
+							"code": 409,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"active sos viewer grant already exists for trusted contact\"\n}"
+						},
+						{
+							"name": "Forbidden Trusted Contact",
+							"status": "Forbidden",
+							"code": 403,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"forbidden\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Stream SOS Viewer (SSE)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "text/event-stream"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/sos/viewer/stream?token={{sos_viewer_token}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"sos",
+								"viewer",
+								"stream"
+							],
+							"query": [
+								{
+									"key": "token",
+									"value": "{{sos_viewer_token}}"
+								}
+							]
+						},
+						"description": "Open the viewer-side Server-Sent Events stream for a granted SOS session. Use this after `Create SOS Viewer Grant`, then start sending reporter location pings over the reporter WebSocket route. Expected events include `ready`, `location`, and periodic keep-alive comments."
+					},
+					"response": [
+						{
+							"name": "Viewer SSE Stream Open",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "text",
+							"header": [],
+							"cookie": [],
+							"body": "event: ready\ndata: {\"session_id\":\"sos-123\",\"trusted_contact_id\":\"contact-123\"}\n\nevent: location\ndata: {\"session_id\":\"sos-123\",\"lat\":12.9716,\"lng\":77.5946,\"recorded_at\":\"2026-03-31T12:00:00Z\",\"published_at\":\"2026-03-31T12:00:01Z\"}\n\n: keep-alive\n\n"
+						},
+						{
+							"name": "Viewer Token Not Found",
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"sos viewer grant not found\"\n}"
+						}
+					]
+				},
+				{
 					"name": "End SOS Session",
 					"request": {
 						"method": "POST",
@@ -585,6 +706,11 @@
 		},
 		{
 			"key": "sos_session_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "sos_viewer_token",
 			"value": "",
 			"type": "string"
 		},

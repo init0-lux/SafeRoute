@@ -1,8 +1,11 @@
 package sos
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -23,12 +26,32 @@ type sessionEnvelope struct {
 	Session sessionResponse `json:"session"`
 }
 
+type viewerGrantEnvelope struct {
+	Grant       viewerGrantResponse `json:"grant"`
+	ViewerToken string              `json:"viewer_token"`
+	SSEURL      string              `json:"sse_url"`
+}
+
 type sessionResponse struct {
 	ID        string        `json:"id"`
 	UserID    *string       `json:"user_id,omitempty"`
 	Status    SessionStatus `json:"status"`
 	StartedAt time.Time     `json:"started_at"`
 	EndedAt   *time.Time    `json:"ended_at"`
+}
+
+type viewerGrantPayload struct {
+	TrustedContactID string `json:"trusted_contact_id"`
+}
+
+type viewerGrantResponse struct {
+	ID               string     `json:"id"`
+	SessionID        string     `json:"session_id"`
+	UserID           string     `json:"user_id"`
+	TrustedContactID string     `json:"trusted_contact_id"`
+	ExpiresAt        time.Time  `json:"expires_at"`
+	RevokedAt        *time.Time `json:"revoked_at,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
 }
 
 type locationPingMessage struct {
@@ -54,6 +77,8 @@ func (h *Handler) RegisterRoutes(router fiber.Router) {
 	sosRoutes.Post("/start", h.auth.VerifyUser(), h.start)
 	sosRoutes.Get("/:id", h.auth.VerifyUser(), h.get)
 	sosRoutes.Post("/:id/end", h.auth.VerifyUser(), h.end)
+	sosRoutes.Post("/:id/viewers", h.auth.VerifyUser(), h.createViewerGrant)
+	sosRoutes.Get("/viewer/stream", h.viewerStream)
 	sosRoutes.Get("/:id/stream", h.auth.VerifyUser(), h.prepareStream, websocket.New(h.stream))
 }
 
@@ -103,6 +128,102 @@ func (h *Handler) end(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(sessionEnvelope{
 		Session: newSessionResponse(session),
 	})
+}
+
+func (h *Handler) createViewerGrant(c *fiber.Ctx) error {
+	user, ok := auth.CurrentUser(c)
+	if !ok {
+		return writeSOSError(c, auth.ErrUnauthorized)
+	}
+
+	var payload viewerGrantPayload
+	if err := c.BodyParser(&payload); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "invalid request body",
+		})
+	}
+
+	grant, token, err := h.service.CreateViewerGrant(c.UserContext(), c.Params("id"), user.ID, CreateViewerGrantInput{
+		TrustedContactID: payload.TrustedContactID,
+	})
+	if err != nil {
+		return writeSOSError(c, err)
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(viewerGrantEnvelope{
+		Grant:       newViewerGrantResponse(grant),
+		ViewerToken: token,
+		SSEURL:      fmt.Sprintf("/api/v1/sos/viewer/stream?token=%s", token),
+	})
+}
+
+func (h *Handler) viewerStream(c *fiber.Ctx) error {
+	token := strings.TrimSpace(c.Query("token"))
+	grant, session, err := h.service.AuthorizeViewer(c.UserContext(), token)
+	if err != nil {
+		return writeSOSError(c, err)
+	}
+
+	c.Set("Content-Type", "text/event-stream")
+	c.Set("Cache-Control", "no-cache")
+	c.Set("Connection", "keep-alive")
+	c.Set("Transfer-Encoding", "chunked")
+
+	events, unsubscribe, subscribeErr := h.service.SubscribeViewer(session.ID)
+	if subscribeErr != nil {
+		return writeSOSError(c, subscribeErr)
+	}
+
+	ctx := c.Context()
+	ctx.SetBodyStreamWriter(func(w *bufio.Writer) {
+		defer unsubscribe()
+
+		readyPayload, marshalErr := json.Marshal(fiber.Map{
+			"session_id":         grant.SessionID,
+			"trusted_contact_id": grant.TrustedContactID,
+		})
+		if marshalErr == nil {
+			if _, writeErr := fmt.Fprint(w, FormatSSEEvent("ready", string(readyPayload))); writeErr != nil {
+				return
+			}
+			if flushErr := w.Flush(); flushErr != nil {
+				return
+			}
+		}
+
+		heartbeat := time.NewTicker(15 * time.Second)
+		defer heartbeat.Stop()
+
+		for {
+			select {
+			case event, ok := <-events:
+				if !ok {
+					return
+				}
+
+				payload, marshalErr := json.Marshal(event)
+				if marshalErr != nil {
+					continue
+				}
+
+				if _, writeErr := fmt.Fprint(w, FormatSSEEvent("location", string(payload))); writeErr != nil {
+					return
+				}
+				if flushErr := w.Flush(); flushErr != nil {
+					return
+				}
+			case <-heartbeat.C:
+				if _, writeErr := fmt.Fprint(w, ": keep-alive\n\n"); writeErr != nil {
+					return
+				}
+				if flushErr := w.Flush(); flushErr != nil {
+					return
+				}
+			}
+		}
+	})
+
+	return nil
 }
 
 func (h *Handler) prepareStream(c *fiber.Ctx) error {
@@ -168,17 +289,29 @@ func newSessionResponse(session *SOSSession) sessionResponse {
 	}
 }
 
+func newViewerGrantResponse(grant *SOSViewerGrant) viewerGrantResponse {
+	return viewerGrantResponse{
+		ID:               grant.ID,
+		SessionID:        grant.SessionID,
+		UserID:           grant.UserID,
+		TrustedContactID: grant.TrustedContactID,
+		ExpiresAt:        grant.ExpiresAt,
+		RevokedAt:        grant.RevokedAt,
+		CreatedAt:        grant.CreatedAt,
+	}
+}
+
 func writeSOSError(c *fiber.Ctx, err error) error {
 	switch {
 	case errors.Is(err, auth.ErrUnauthorized):
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": err.Error()})
-	case errors.Is(err, ErrInvalidSessionID), errors.Is(err, ErrInvalidUserID), errors.Is(err, ErrInvalidLatitude), errors.Is(err, ErrInvalidLongitude):
+	case errors.Is(err, ErrInvalidSessionID), errors.Is(err, ErrInvalidUserID), errors.Is(err, ErrInvalidLatitude), errors.Is(err, ErrInvalidLongitude), errors.Is(err, ErrInvalidViewerToken), errors.Is(err, ErrInvalidTrustedContactID):
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	case errors.Is(err, ErrSessionForbidden):
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
-	case errors.Is(err, ErrSessionNotFound):
+	case errors.Is(err, ErrSessionNotFound), errors.Is(err, ErrViewerGrantNotFound):
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
-	case errors.Is(err, ErrActiveSessionExists), errors.Is(err, ErrSessionAlreadyEnded):
+	case errors.Is(err, ErrActiveSessionExists), errors.Is(err, ErrSessionAlreadyEnded), errors.Is(err, ErrViewerGrantConflict), errors.Is(err, ErrViewerGrantExpired), errors.Is(err, ErrViewerGrantRevoked):
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": err.Error()})
 	default:
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal server error"})

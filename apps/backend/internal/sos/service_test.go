@@ -69,3 +69,91 @@ func TestRecordLocationPingPersistsReporterLocation(t *testing.T) {
 		t.Fatalf("expected 1 location ping, got %d", got)
 	}
 }
+
+func TestCreateViewerGrantRequiresOwnedTrustedContact(t *testing.T) {
+	repo := newMemorySOSRepository()
+	service := sos.NewService(repo)
+
+	session, err := service.StartSession(context.Background(), "user-4")
+	if err != nil {
+		t.Fatalf("failed to start session: %v", err)
+	}
+
+	repo.AddTrustedContact("user-4", "contact-1")
+
+	grant, token, err := service.CreateViewerGrant(context.Background(), session.ID, "user-4", sos.CreateViewerGrantInput{
+		TrustedContactID: "contact-1",
+	})
+	if err != nil {
+		t.Fatalf("failed to create viewer grant: %v", err)
+	}
+
+	if grant.TrustedContactID != "contact-1" {
+		t.Fatalf("expected trusted contact id contact-1, got %s", grant.TrustedContactID)
+	}
+
+	if token == "" {
+		t.Fatal("expected viewer token to be returned")
+	}
+}
+
+func TestCreateViewerGrantRejectsUnownedTrustedContact(t *testing.T) {
+	repo := newMemorySOSRepository()
+	service := sos.NewService(repo)
+
+	session, err := service.StartSession(context.Background(), "user-5")
+	if err != nil {
+		t.Fatalf("failed to start session: %v", err)
+	}
+
+	if _, _, err := service.CreateViewerGrant(context.Background(), session.ID, "user-5", sos.CreateViewerGrantInput{
+		TrustedContactID: "contact-missing",
+	}); err == nil {
+		t.Fatal("expected viewer grant creation to fail")
+	} else if err != sos.ErrSessionForbidden {
+		t.Fatalf("expected ErrSessionForbidden, got %v", err)
+	}
+}
+
+func TestAuthorizeViewerReturnsGrantAndSession(t *testing.T) {
+	repo := newMemorySOSRepository()
+	service := sos.NewService(repo)
+
+	session, err := service.StartSession(context.Background(), "user-6")
+	if err != nil {
+		t.Fatalf("failed to start session: %v", err)
+	}
+
+	repo.AddTrustedContact("user-6", "contact-2")
+
+	grant, token, err := service.CreateViewerGrant(context.Background(), session.ID, "user-6", sos.CreateViewerGrantInput{
+		TrustedContactID: "contact-2",
+	})
+	if err != nil {
+		t.Fatalf("failed to create viewer grant: %v", err)
+	}
+
+	authorizedGrant, authorizedSession, err := service.AuthorizeViewer(context.Background(), token)
+	if err != nil {
+		t.Fatalf("failed to authorize viewer: %v", err)
+	}
+
+	if authorizedGrant.ID != grant.ID {
+		t.Fatalf("expected grant id %s, got %s", grant.ID, authorizedGrant.ID)
+	}
+
+	if authorizedSession.ID != session.ID {
+		t.Fatalf("expected session id %s, got %s", session.ID, authorizedSession.ID)
+	}
+}
+
+func TestAuthorizeViewerRejectsInvalidToken(t *testing.T) {
+	repo := newMemorySOSRepository()
+	service := sos.NewService(repo)
+
+	if _, _, err := service.AuthorizeViewer(context.Background(), "invalid-token"); err == nil {
+		t.Fatal("expected invalid viewer token to fail")
+	} else if err != sos.ErrViewerGrantNotFound {
+		t.Fatalf("expected ErrViewerGrantNotFound, got %v", err)
+	}
+}
