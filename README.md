@@ -29,6 +29,9 @@ This is a monorepo setup consisting of:
 ### Frontend
 - **Framework**: React Native with **Expo** framework for rapid iOS/Android and Web deployment.
 
+### Blockchain
+- **Soroban**: Smart contract written in rust and deployed successfully on the testnet
+- **Contract Address**: CAD455XRGDJRHQNBCPU2M33XABQHYP3KEBU4MK6DZQ3VEGTYGLCZSMMR
 ---
 
 ## 🚀 Current Implementation Status

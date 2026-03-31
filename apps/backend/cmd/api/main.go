@@ -157,10 +157,46 @@ func main() {
 	})
 	sosHandler := sos.NewHandler(sosService, authMiddleware)
 
+	var evidenceRelayQueue *workers.EvidenceRelayQueue
+	var evidenceRelayJob *workers.EvidenceRelayJob
+	if cfg.SorobanContractID != "" {
+		evidenceRelayQueue = workers.NewEvidenceRelayQueue(cfg.WorkerRelayQueueSize)
+		evidenceRelayJob = workers.NewEvidenceRelayJob(
+			evidenceRelayQueue,
+			workers.NewSorobanCLIRelayer(
+				cfg.SorobanCLIBinary,
+				cfg.SorobanContractID,
+				cfg.SorobanSourceIdentity,
+				cfg.SorobanNetwork,
+			),
+		)
+		evidenceHandler = evidence.NewHandler(
+			evidence.NewService(
+				evidence.NewRepository(database),
+				evidence.NewLocalStorage(cfg.EvidenceStorageRoot),
+				reportsService,
+				sosRepo,
+				evidence.ServiceConfig{
+					MaxFileSizeBytes:     cfg.MaxEvidenceSizeBytes,
+					BlockchainDispatcher: evidenceRelayQueue,
+				},
+			),
+			authMiddleware.VerifyUser(),
+		)
+	}
+
 	workerManager := workers.NewManager(
 		workers.NewCleanupJob(cfg.EvidenceStorageRoot, cfg.WorkerCleanupInterval, cfg.WorkerCleanupMaxAge),
 		workers.NewSafetyCacheJob(nil, cfg.WorkerSafetyRefreshInterval),
 		workers.NewIPFSUploadJob(nil, cfg.WorkerIPFSPollInterval),
+		evidenceRelayJob,
+		workers.NewIndexerJob(
+			workers.NewSorobanRPCClient(cfg.SorobanRPCURL, nil),
+			workers.NewGormEvidenceChainStore(database),
+			cfg.SorobanContractID,
+			cfg.WorkerIndexerPollInterval,
+			cfg.WorkerIndexerLookbackLedgers,
+		),
 	)
 
 	server := app.New(

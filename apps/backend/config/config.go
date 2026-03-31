@@ -46,10 +46,18 @@ type Config struct {
 	SafetyRouteCorridorRadiusM     float64
 	SafetyRouteSegmentLengthM      float64
 	SafetyRouteMaxDistanceM        float64
+	SorobanRPCURL                  string
+	SorobanContractID              string
+	SorobanNetwork                 string
+	SorobanSourceIdentity          string
+	SorobanCLIBinary               string
 	WorkerCleanupInterval          time.Duration
 	WorkerCleanupMaxAge            time.Duration
 	WorkerSafetyRefreshInterval    time.Duration
 	WorkerIPFSPollInterval         time.Duration
+	WorkerIndexerPollInterval      time.Duration
+	WorkerIndexerLookbackLedgers   uint32
+	WorkerRelayQueueSize           int
 }
 
 // Load returns runtime config using environment variables with local defaults.
@@ -95,10 +103,18 @@ func Load() Config {
 		SafetyRouteCorridorRadiusM:     getFloatEnv("SAFETY_ROUTE_CORRIDOR_RADIUS_METERS", 75),
 		SafetyRouteSegmentLengthM:      getFloatEnv("SAFETY_ROUTE_SEGMENT_LENGTH_METERS", 150),
 		SafetyRouteMaxDistanceM:        getFloatEnv("SAFETY_ROUTE_MAX_DISTANCE_METERS", 10000),
+		SorobanRPCURL:                  getEnv("SOROBAN_RPC_URL", ""),
+		SorobanContractID:              getEnv("SOROBAN_CONTRACT_ID", ""),
+		SorobanNetwork:                 getEnv("SOROBAN_NETWORK", "testnet"),
+		SorobanSourceIdentity:          getEnv("SOROBAN_SOURCE_IDENTITY", "backend-relayer"),
+		SorobanCLIBinary:               getEnv("SOROBAN_CLI_BINARY", "stellar"),
 		WorkerCleanupInterval:          getDurationEnv("WORKER_CLEANUP_INTERVAL", time.Hour),
 		WorkerCleanupMaxAge:            getDurationEnv("WORKER_CLEANUP_MAX_AGE", 24*time.Hour),
 		WorkerSafetyRefreshInterval:    getDurationEnv("WORKER_SAFETY_REFRESH_INTERVAL", 10*time.Minute),
 		WorkerIPFSPollInterval:         getDurationEnv("WORKER_IPFS_POLL_INTERVAL", 15*time.Minute),
+		WorkerIndexerPollInterval:      getDurationEnv("WORKER_INDEXER_POLL_INTERVAL", 10*time.Second),
+		WorkerIndexerLookbackLedgers:   getUint32Env("WORKER_INDEXER_LOOKBACK_LEDGERS", 120),
+		WorkerRelayQueueSize:           getIntEnv("WORKER_RELAY_QUEUE_SIZE", 100),
 	}
 }
 
@@ -178,6 +194,20 @@ func getInt64Env(key string, fallback int64) int64 {
 	}
 
 	return parsed
+}
+
+func getUint32Env(key string, fallback uint32) uint32 {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+
+	parsed, err := strconv.ParseUint(value, 10, 32)
+	if err != nil {
+		return fallback
+	}
+
+	return uint32(parsed)
 }
 
 func getFloatEnv(key string, fallback float64) float64 {
