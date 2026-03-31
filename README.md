@@ -90,10 +90,10 @@ Run queries sequentially: `Health` → `Auth / Register` → `Reports` / `Safety
 cd apps/frontend
 
 # Install dependencies
-npm install
+pnpm install
 
 # Start the Expo bundler
-npx expo start
+pnpm expo start
 ```
 
 ---
