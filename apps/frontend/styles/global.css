@@ -1,0 +1,53 @@
+/* SafeRoute Global Theme */
+
+:root {
+  /* Primary Colors */
+  --color-bg-dark: #000000;
+  --color-purple: #C9A0DC;
+  --color-purple-light: #DBC4EC;
+  --color-red: #E74C3C;
+  --color-red-dark: #C0392B;
+  --color-orange: #E8873A;
+  --color-orange-light: #F0A05C;
+
+  /* Neutrals */
+  --color-white: #FFFFFF;
+  --color-gray: #888888;
+  --color-gray-light: #AAAAAA;
+  --color-gray-dark: #333333;
+
+  /* Surfaces */
+  --color-card-bg: #1A1A1A;
+  --color-card-bg-light: #2A2A2A;
+  --color-input-bg: #F5F5F5;
+
+  /* Semantic */
+  --color-sos-red: #E74C3C;
+  --color-success: #2ECC71;
+  --color-overlay: rgba(0, 0, 0, 0.5);
+  --color-border: #333333;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 48px;
+
+  /* Font Sizes */
+  --font-xs: 12px;
+  --font-sm: 14px;
+  --font-md: 16px;
+  --font-lg: 20px;
+  --font-xl: 28px;
+  --font-xxl: 36px;
+  --font-hero: 48px;
+
+  /* Border Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+}
