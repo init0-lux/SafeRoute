@@ -12,12 +12,14 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { isValidPhoneNumber } from 'libphonenumber-js';
 import { Colors, Spacing, BorderRadius, FontSizes } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/services/api';
 
 export default function RegisterScreen() {
   const { register } = useAuth();
+  const [username, setUsername] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,8 +30,10 @@ export default function RegisterScreen() {
   const [errorMessage, setErrorMessage] = useState('');
 
   const passwordsMatch = password === confirmPassword;
+  const isValidPhone = isValidPhoneNumber(phone, 'IN');
   const canSubmit =
-    phone.trim().length > 0 &&
+    username.trim().length >= 3 &&
+    isValidPhone &&
     password.length >= 8 &&
     passwordsMatch &&
     confirmPassword.length > 0 &&
@@ -42,7 +46,9 @@ export default function RegisterScreen() {
     setIsSubmitting(true);
 
     try {
-      await register(phone.trim(), password, email.trim() || undefined);
+      // Clean phone and prepend +91 for the backend
+      const e164Phone = '+91' + phone.replace(/\D/g, '');
+      await register(username.trim(), e164Phone, password, email.trim() || undefined);
       router.replace('/home' as never);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -84,8 +90,27 @@ export default function RegisterScreen() {
 
         {/* Form */}
         <View style={styles.formContainer}>
-          {/* Phone Input */}
+          {/* Username Input */}
           <View style={styles.inputWrapper}>
+            <Ionicons
+              name="person-outline"
+              size={18}
+              color={Colors.gray}
+              style={styles.inputIcon}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="username"
+              placeholderTextColor={Colors.gray}
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
+              autoComplete="username"
+            />
+          </View>
+
+          {/* Phone Input */}
+          <View style={[styles.inputWrapper, phone.length > 0 && !isValidPhone && { borderColor: Colors.red, borderWidth: 1 }]}>
             <View style={styles.countryCode}>
               <Text style={styles.countryCodeText}>+91</Text>
             </View>

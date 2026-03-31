@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { isValidPhoneNumber } from 'libphonenumber-js';
 import { Colors, Spacing, BorderRadius, FontSizes } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/services/api';
@@ -25,7 +26,8 @@ export default function LoginScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const canSubmit = phone.trim().length > 0 && password.length >= 8 && !isSubmitting;
+  const isValidPhone = isValidPhoneNumber(phone, 'IN');
+  const canSubmit = isValidPhone && password.length >= 8 && !isSubmitting;
 
   const handleLogin = async () => {
     if (!canSubmit) return;
@@ -34,7 +36,8 @@ export default function LoginScreen() {
     setIsSubmitting(true);
 
     try {
-      await login(phone.trim(), password);
+      const e164Phone = '+91' + phone.replace(/\D/g, '');
+      await login(e164Phone, password);
       router.replace('/home' as never);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -69,7 +72,7 @@ export default function LoginScreen() {
         {/* Form */}
         <View style={styles.formContainer}>
           {/* Phone Input */}
-          <View style={styles.inputWrapper}>
+          <View style={[styles.inputWrapper, phone.length > 0 && !isValidPhone && { borderColor: Colors.red, borderWidth: 1 }]}>
             <View style={styles.countryCode}>
               <Text style={styles.countryCodeText}>+91</Text>
             </View>

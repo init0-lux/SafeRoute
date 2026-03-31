@@ -53,7 +53,7 @@ export default function HomeScreen() {
                     </View>
                     <View style={styles.greeting}>
                         <Text style={styles.greetingName}>
-                            hello, {user?.phone ?? 'user'}
+                            hello, {user?.username ?? 'user'}
                         </Text>
                         <Text style={styles.greetingSub}>let us help you find the safest route</Text>
                     </View>

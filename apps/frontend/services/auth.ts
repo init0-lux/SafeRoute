@@ -4,6 +4,7 @@ import { post, get, setTokens, clearTokens } from './api';
 
 export interface User {
   id: string;
+  username: string;
   phone: string;
   email?: string;
   trust_score: number;
@@ -25,8 +26,9 @@ interface LogoutResponse {
 
 // ── Auth Service ─────────────────────────────────────────────────────────────
 
-export async function register(phone: string, password: string, email?: string): Promise<User> {
+export async function register(username: string, phone: string, password: string, email?: string): Promise<User> {
   const data = await post<AuthResponse>('/auth/register', {
+    username,
     phone,
     password,
     ...(email ? { email } : {}),

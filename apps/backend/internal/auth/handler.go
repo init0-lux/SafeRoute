@@ -16,6 +16,7 @@ type Handler struct {
 }
 
 type authRequest struct {
+	Username string `json:"username,omitempty"`
 	Phone    string `json:"phone"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -34,6 +35,7 @@ type tokenResponse struct {
 
 type userResponse struct {
 	ID         string  `json:"id"`
+	Username   string  `json:"username"`
 	Phone      string  `json:"phone"`
 	Email      *string `json:"email,omitempty"`
 	TrustScore float64 `json:"trust_score"`
@@ -93,6 +95,7 @@ func (h *Handler) register(c *fiber.Ctx) error {
 	}
 
 	user, err := h.service.Register(c.UserContext(), RegisterInput{
+		Username: req.Username,
 		Phone:    req.Phone,
 		Email:    req.Email,
 		Password: req.Password,
@@ -208,6 +211,7 @@ func writeAuthError(c *fiber.Ctx, err error) error {
 func newUserResponse(user *User) userResponse {
 	return userResponse{
 		ID:         user.ID,
+		Username:   user.Username,
 		Phone:      user.Phone,
 		Email:      user.Email,
 		TrustScore: user.TrustScore,

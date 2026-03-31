@@ -4,6 +4,7 @@ import "time"
 
 type User struct {
 	ID                  string             `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	Username            string             `gorm:"type:text;not null;uniqueIndex"`
 	Phone               string             `gorm:"type:text;not null;uniqueIndex"`
 	Email               *string            `gorm:"type:text"`
 	PasswordHash        string             `gorm:"column:password_hash;type:text;not null"`
