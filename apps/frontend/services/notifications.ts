@@ -1,19 +1,29 @@
-import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
-import * as Device from 'expo-device';
+import type {
+  Notification as ExpoNotification,
+  NotificationResponse as ExpoNotificationResponse,
+} from 'expo-notifications';
 import { Platform } from 'react-native';
 import { post } from './api';
 
-// Configure notification behavior
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+type NotificationsModule = typeof import('expo-notifications');
+type DeviceModule = typeof import('expo-device');
+
+export type Notification = ExpoNotification;
+export type NotificationResponse = ExpoNotificationResponse;
+
+export interface NotificationSubscription {
+  remove: () => void;
+}
+
+const noopSubscription: NotificationSubscription = {
+  remove: () => {},
+};
+
+let notificationsModule: NotificationsModule | null | undefined;
+let deviceModule: DeviceModule | null | undefined;
+let notificationHandlerConfigured = false;
+let availabilityWarningShown = false;
 
 export interface NotificationData {
   type?: string;
@@ -22,6 +32,9 @@ export interface NotificationData {
   viewer_url?: string;
   reporter_identifier?: string;
   started_at?: string;
+  lat?: number;
+  lng?: number;
+  recorded_at?: string;
 }
 
 function getExpoProjectId(): string | null {
@@ -33,7 +46,77 @@ function getExpoProjectId(): string | null {
   );
 }
 
+function getNotificationsModule(): NotificationsModule | null {
+  if (notificationsModule !== undefined) {
+    return notificationsModule;
+  }
+
+  try {
+    notificationsModule = require('expo-notifications') as NotificationsModule;
+  } catch (error) {
+    notificationsModule = null;
+    logNotificationsUnavailable(error);
+  }
+
+  return notificationsModule;
+}
+
+function getDeviceModule(): DeviceModule | null {
+  if (deviceModule !== undefined) {
+    return deviceModule;
+  }
+
+  try {
+    deviceModule = require('expo-device') as DeviceModule;
+  } catch (error) {
+    deviceModule = null;
+    logNotificationsUnavailable(error);
+  }
+
+  return deviceModule;
+}
+
+function ensureNotificationHandlerConfigured(): NotificationsModule | null {
+  const Notifications = getNotificationsModule();
+  if (!Notifications) {
+    return null;
+  }
+
+  if (!notificationHandlerConfigured) {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+    notificationHandlerConfigured = true;
+  }
+
+  return Notifications;
+}
+
+function logNotificationsUnavailable(error?: unknown) {
+  if (availabilityWarningShown) {
+    return;
+  }
+
+  availabilityWarningShown = true;
+  console.warn(
+    'expo-notifications is unavailable in this client build. Rebuild the Android dev client to enable push notifications.',
+    error
+  );
+}
+
 export async function registerForPushNotifications(): Promise<string | null> {
+  const Notifications = ensureNotificationHandlerConfigured();
+  const Device = getDeviceModule();
+  if (!Notifications || !Device) {
+    return null;
+  }
+
   if (!Device.isDevice) {
     console.log('Push notifications require a physical device');
     return null;
@@ -102,14 +185,24 @@ export async function updatePushToken(token: string): Promise<void> {
 }
 
 export function addNotificationReceivedListener(
-  callback: (notification: Notifications.Notification) => void
-): Notifications.Subscription {
+  callback: (notification: Notification) => void
+): NotificationSubscription {
+  const Notifications = ensureNotificationHandlerConfigured();
+  if (!Notifications) {
+    return noopSubscription;
+  }
+
   return Notifications.addNotificationReceivedListener(callback);
 }
 
 export function addNotificationResponseListener(
-  callback: (response: Notifications.NotificationResponse) => void
-): Notifications.Subscription {
+  callback: (response: NotificationResponse) => void
+): NotificationSubscription {
+  const Notifications = ensureNotificationHandlerConfigured();
+  if (!Notifications) {
+    return noopSubscription;
+  }
+
   return Notifications.addNotificationResponseReceivedListener(callback);
 }
 
@@ -118,6 +211,11 @@ export async function scheduleLocalNotification(
   body: string,
   data?: NotificationData
 ): Promise<string> {
+  const Notifications = ensureNotificationHandlerConfigured();
+  if (!Notifications) {
+    return '';
+  }
+
   return await Notifications.scheduleNotificationAsync({
     content: {
       title,
@@ -131,13 +229,28 @@ export async function scheduleLocalNotification(
 }
 
 export async function dismissAllNotifications(): Promise<void> {
+  const Notifications = ensureNotificationHandlerConfigured();
+  if (!Notifications) {
+    return;
+  }
+
   await Notifications.dismissAllNotificationsAsync();
 }
 
 export async function getBadgeCount(): Promise<number> {
+  const Notifications = ensureNotificationHandlerConfigured();
+  if (!Notifications) {
+    return 0;
+  }
+
   return await Notifications.getBadgeCountAsync();
 }
 
 export async function setBadgeCount(count: number): Promise<void> {
+  const Notifications = ensureNotificationHandlerConfigured();
+  if (!Notifications) {
+    return;
+  }
+
   await Notifications.setBadgeCountAsync(count);
 }

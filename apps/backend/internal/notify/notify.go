@@ -42,12 +42,16 @@ type Recipient struct {
 }
 
 type SOSAlertPayload struct {
-	SOSSessionID       string
-	ViewerToken        string
-	ViewerURL          string
-	ReporterIdentifier string
-	StartedAt          time.Time
-	Message            string
+	Type               string     `json:"type"`
+	SOSSessionID       string     `json:"sos_session_id"`
+	ViewerToken        string     `json:"viewer_token"`
+	ViewerURL          string     `json:"viewer_url"`
+	ReporterIdentifier string     `json:"reporter_identifier"`
+	StartedAt          time.Time  `json:"started_at"`
+	Latitude           *float64   `json:"lat,omitempty"`
+	Longitude          *float64   `json:"lng,omitempty"`
+	RecordedAt         *time.Time `json:"recorded_at,omitempty"`
+	Message            string     `json:"message,omitempty"`
 }
 
 type Notification struct {
@@ -217,6 +221,9 @@ func BuildSOSStartedNotification(channel Channel, recipient Recipient, payload S
 
 	if notification.SOSAlert.StartedAt.IsZero() {
 		notification.SOSAlert.StartedAt = time.Now().UTC()
+	}
+	if strings.TrimSpace(notification.SOSAlert.Type) == "" {
+		notification.SOSAlert.Type = string(TemplateSOSStarted)
 	}
 
 	if err := ValidateNotification(notification); err != nil {

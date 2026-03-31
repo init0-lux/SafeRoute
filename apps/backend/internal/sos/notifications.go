@@ -2,7 +2,6 @@ package sos
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -90,28 +89,15 @@ func (s *Service) NotifyTrustedContacts(
 		StartedAt: session.StartedAt.UTC(),
 		Results:   make([]NotificationFanoutResult, 0, len(contacts)),
 	}
+	latestLocation, err := s.GetLatestLocation(ctx, session.ID)
+	if err != nil {
+		return nil, err
+	}
 
 	reporterIdentifier := userID
 	for _, contact := range contacts {
-		_, token, err := s.CreateViewerGrant(ctx, session.ID, userID, CreateViewerGrantInput{
-			TrustedContactID: contact.ID,
-		})
+		_, token, err := s.ReplaceViewerGrant(ctx, session.ID, userID, contact.ID)
 		if err != nil {
-			// If grant already exists, try to get it instead of failing
-			if errors.Is(err, ErrViewerGrantConflict) {
-				// Try to get the existing active grant
-				existingGrant, getErr := s.repo.GetActiveViewerGrantBySessionContact(ctx, session.ID, contact.ID, time.Now().UTC())
-				if getErr == nil && existingGrant != nil {
-					// Reuse existing grant - skip creating notification as they were already notified
-					summary.Results = append(summary.Results, NotificationFanoutResult{
-						ContactID: contact.ID,
-						Status:    "skipped",
-						Message:   "viewer grant already exists",
-					})
-					continue
-				}
-			}
-			
 			summary.Results = append(summary.Results, NotificationFanoutResult{
 				ContactID: contact.ID,
 				Status:    "failed",
@@ -139,6 +125,9 @@ func (s *Service) NotifyTrustedContacts(
 				ViewerURL:          viewerURL,
 				ReporterIdentifier: reporterIdentifier,
 				StartedAt:          session.StartedAt.UTC(),
+				Latitude:           locationLatitude(latestLocation),
+				Longitude:          locationLongitude(latestLocation),
+				RecordedAt:         locationRecordedAt(latestLocation),
 			},
 		)
 		if buildErr != nil {
@@ -180,6 +169,33 @@ func (s *Service) NotifyTrustedContacts(
 	}
 
 	return summary, nil
+}
+
+func locationLatitude(location *LocationSnapshot) *float64 {
+	if location == nil {
+		return nil
+	}
+
+	latitude := location.Latitude
+	return &latitude
+}
+
+func locationLongitude(location *LocationSnapshot) *float64 {
+	if location == nil {
+		return nil
+	}
+
+	longitude := location.Longitude
+	return &longitude
+}
+
+func locationRecordedAt(location *LocationSnapshot) *time.Time {
+	if location == nil {
+		return nil
+	}
+
+	recordedAt := location.RecordedAt.UTC()
+	return &recordedAt
 }
 
 func BuildViewerStreamURL(baseViewerURL, viewerToken string) string {

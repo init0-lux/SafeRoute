@@ -11,7 +11,8 @@ import { router } from 'expo-router';
 import { Colors, Spacing, BorderRadius, FontSizes } from '@/constants/theme';
 import PulseAnimation from '@/components/PulseAnimation';
 import * as Location from 'expo-location';
-import { startSOS, endSOS, pingSOSLocation, createViewerGrant } from '@/services/sos';
+import { ApiError } from '@/services/api';
+import { startSOS, endSOS, endActiveSOS, getActiveSOSSession, pingSOSLocation, SOSSession } from '@/services/sos';
 import { getTrustedContacts } from '@/services/contacts';
 
 const { width } = Dimensions.get('window');
@@ -21,18 +22,72 @@ type Phase = 'countdown' | 'calling';
 export default function SOSScreen() {
     const [count, setCount] = useState(3);
     const [phase, setPhase] = useState<Phase>('countdown');
-    const [sessionId, setSessionId] = useState<string | null>(null);
     const [isCancelling, setIsCancelling] = useState(false);
     const [contactCount, setContactCount] = useState(0);
     const scaleAnim = useRef(new Animated.Value(0.5)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
     const pollingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+    const sessionIdRef = useRef<string | null>(null);
+    const startPromiseRef = useRef<Promise<void> | null>(null);
+    const isMountedRef = useRef(true);
+    const cancelRequestedRef = useRef(false);
 
     // Get location permissions and contact count early
     useEffect(() => {
         Location.requestForegroundPermissionsAsync();
         getTrustedContacts().then((c) => setContactCount(c.length)).catch(() => {});
     }, []);
+
+    const updateSessionId = (nextSessionId: string | null) => {
+        sessionIdRef.current = nextSessionId;
+    };
+
+    const stopLocationPolling = () => {
+        if (pollingInterval.current) {
+            clearInterval(pollingInterval.current);
+            pollingInterval.current = null;
+        }
+    };
+
+    const isIgnorableCancelError = (error: unknown) => {
+        if (!(error instanceof ApiError)) {
+            return false;
+        }
+
+        if (error.status === 404) {
+            return true;
+        }
+
+        return error.status === 409 && error.message.toLowerCase().includes('already ended');
+    };
+
+    const endCurrentSession = async (knownSessionId?: string | null) => {
+        stopLocationPolling();
+
+        const targetSessionId = knownSessionId ?? sessionIdRef.current;
+        if (targetSessionId) {
+            try {
+                await endSOS(targetSessionId);
+            } catch (error) {
+                if (!isIgnorableCancelError(error)) {
+                    throw error;
+                }
+            } finally {
+                if (sessionIdRef.current === targetSessionId) {
+                    updateSessionId(null);
+                }
+            }
+            return;
+        }
+
+        try {
+            await endActiveSOS();
+        } catch (error) {
+            if (!isIgnorableCancelError(error)) {
+                throw error;
+            }
+        }
+    };
 
     // Animate each number
     const animateNumber = () => {
@@ -89,32 +144,85 @@ export default function SOSScreen() {
         return () => clearTimeout(timer);
     }, [count, phase, isCancelling]);
 
-    const triggerSOS = async () => {
+    const beginLocationPolling = (activeSessionId: string) => {
+        stopLocationPolling();
+        void tickLocation(activeSessionId);
+        pollingInterval.current = setInterval(() => {
+            void tickLocation(activeSessionId);
+        }, 5000);
+    };
+
+    const activateSession = async (activeSession: SOSSession) => {
+        if (cancelRequestedRef.current) {
+            await endCurrentSession(activeSession.id);
+            return;
+        }
+
+        updateSessionId(activeSession.id);
+        beginLocationPolling(activeSession.id);
+    };
+
+    const recoverExistingSession = async (error: unknown): Promise<SOSSession | null> => {
+        if (!(error instanceof ApiError) || error.status !== 409) {
+            return null;
+        }
+
         try {
-            const session = await startSOS();
-            setSessionId(session.id);
-
-            // Create viewer grants for all trusted contacts so they get notified
-            const contacts = await getTrustedContacts();
-            for (const contact of contacts) {
-                try {
-                    await createViewerGrant(session.id, contact.id);
-                } catch (grantErr) {
-                    console.warn(`Failed to create viewer grant for ${contact.name}:`, grantErr);
-                }
-            }
-
-            tickLocation(session.id);
-            // 5 second polling
-            pollingInterval.current = setInterval(() => {
-                tickLocation(session.id);
-            }, 5000);
-        } catch (err) {
-            console.error('Failed to start SOS:', err);
+            return await getActiveSOSSession();
+        } catch (recoveryError) {
+            console.error('Failed to recover active SOS session:', recoveryError);
+            return null;
         }
     };
 
+    const triggerSOS = () => {
+        let pendingStart: Promise<void> | null = null;
+
+        pendingStart = (async () => {
+            try {
+                const initialPosition = await Location.getCurrentPositionAsync({
+                    accuracy: Location.Accuracy.High,
+                });
+
+                if (cancelRequestedRef.current) {
+                    return;
+                }
+
+                let activeSession: SOSSession;
+                try {
+                    activeSession = await startSOS({
+                        lat: initialPosition.coords.latitude,
+                        lng: initialPosition.coords.longitude,
+                        ts: new Date().toISOString(),
+                    });
+                } catch (error) {
+                    const recoveredSession = await recoverExistingSession(error);
+                    if (!recoveredSession) {
+                        throw error;
+                    }
+                    activeSession = recoveredSession;
+                }
+
+                await activateSession(activeSession);
+            } catch (err) {
+                if (!cancelRequestedRef.current) {
+                    console.error('Failed to start SOS:', err);
+                }
+            } finally {
+                if (startPromiseRef.current === pendingStart) {
+                    startPromiseRef.current = null;
+                }
+            }
+        })();
+
+        startPromiseRef.current = pendingStart;
+    };
+
     const tickLocation = async (activeSessionId: string) => {
+        if (cancelRequestedRef.current || sessionIdRef.current !== activeSessionId) {
+            return;
+        }
+
         try {
             const { coords } = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
             await pingSOSLocation(activeSessionId, coords.latitude, coords.longitude);
@@ -126,9 +234,8 @@ export default function SOSScreen() {
     // Clean up interval on unmount
     useEffect(() => {
         return () => {
-            if (pollingInterval.current) {
-                clearInterval(pollingInterval.current);
-            }
+            isMountedRef.current = false;
+            stopLocationPolling();
         };
     }, []);
 
@@ -155,21 +262,32 @@ export default function SOSScreen() {
     }, [phase]);
 
     const handleCancel = async () => {
-        setIsCancelling(true);
-        if (pollingInterval.current) {
-            clearInterval(pollingInterval.current);
-            pollingInterval.current = null;
+        if (isCancelling) {
+            return;
         }
 
-        if (sessionId) {
-            try {
-                await endSOS(sessionId);
-            } catch (err) {
-                console.error('Failed to end SOS:', err);
+        setIsCancelling(true);
+        cancelRequestedRef.current = true;
+        stopLocationPolling();
+
+        try {
+            const pendingStart = startPromiseRef.current;
+            if (pendingStart) {
+                await pendingStart;
+            }
+
+            await endCurrentSession(sessionIdRef.current);
+            router.back();
+        } catch (err) {
+            console.error('Failed to cancel SOS:', err);
+            cancelRequestedRef.current = false;
+            if (isMountedRef.current) {
+                setIsCancelling(false);
+                if (sessionIdRef.current) {
+                    beginLocationPolling(sessionIdRef.current);
+                }
             }
         }
-        
-        router.back();
     };
 
     return (

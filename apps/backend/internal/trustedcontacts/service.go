@@ -145,25 +145,15 @@ func (s *Service) AcceptRequest(ctx context.Context, requestID string, input Acc
 		return nil, nil, ErrInvalidRequestToken
 	}
 
-	if _, err := s.repo.GetTrustedContactByUserPhone(ctx, request.UserID, request.Phone); err == nil {
-		return nil, nil, ErrTrustedContactExists
-	} else if !errors.Is(err, ErrTrustedContactNotFound) {
+	contact, reciprocalContact, err := s.buildAcceptedContacts(ctx, request, now)
+	if err != nil {
 		return nil, nil, err
-	}
-
-	contact := &TrustedContact{
-		UserID:     request.UserID,
-		RequestID:  &request.ID,
-		Name:       request.Name,
-		Phone:      request.Phone,
-		Email:      request.Email,
-		AcceptedAt: now,
 	}
 
 	request.Status = RequestStatusAccepted
 	request.RespondedAt = &now
 
-	if err := s.repo.CompleteRequestAcceptance(ctx, request, contact); err != nil {
+	if err := s.repo.CompleteRequestAcceptance(ctx, request, contact, reciprocalContact); err != nil {
 		return nil, nil, err
 	}
 
@@ -286,10 +276,37 @@ func (s *Service) AcceptRequestByPhone(ctx context.Context, requestID string, us
 		return nil, nil, ErrRequestExpired
 	}
 
-	// Check if contact already exists
+	contact, reciprocalContact, err := s.buildAcceptedContacts(ctx, request, now)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	request.Status = RequestStatusAccepted
+	request.RespondedAt = &now
+
+	if err := s.repo.CompleteRequestAcceptance(ctx, request, contact, reciprocalContact); err != nil {
+		return nil, nil, err
+	}
+
+	request.AcceptedContactID = &contact.ID
+
+	return request, contact, nil
+}
+
+func (s *Service) buildAcceptedContacts(ctx context.Context, request *TrustedContactRequest, acceptedAt time.Time) (*TrustedContact, *TrustedContact, error) {
 	if _, err := s.repo.GetTrustedContactByUserPhone(ctx, request.UserID, request.Phone); err == nil {
 		return nil, nil, ErrTrustedContactExists
 	} else if !errors.Is(err, ErrTrustedContactNotFound) {
+		return nil, nil, err
+	}
+
+	requester, err := s.authRepo.GetUserByID(ctx, request.UserID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	acceptedUser, err := s.authRepo.GetUserByPhone(ctx, request.Phone)
+	if err != nil {
 		return nil, nil, err
 	}
 
@@ -299,19 +316,18 @@ func (s *Service) AcceptRequestByPhone(ctx context.Context, requestID string, us
 		Name:       request.Name,
 		Phone:      request.Phone,
 		Email:      request.Email,
-		AcceptedAt: now,
+		AcceptedAt: acceptedAt,
 	}
 
-	request.Status = RequestStatusAccepted
-	request.RespondedAt = &now
-
-	if err := s.repo.CompleteRequestAcceptance(ctx, request, contact); err != nil {
-		return nil, nil, err
+	reciprocalContact := &TrustedContact{
+		UserID:     acceptedUser.ID,
+		Name:       requester.Username,
+		Phone:      requester.Phone,
+		Email:      requester.Email,
+		AcceptedAt: acceptedAt,
 	}
 
-	request.AcceptedContactID = &contact.ID
-
-	return request, contact, nil
+	return contact, reciprocalContact, nil
 }
 
 func normalizePhone(phone string) string {

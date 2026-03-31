@@ -19,15 +19,39 @@ type ViewerEvent struct {
 	PublishedAt time.Time `json:"published_at"`
 }
 
+type LocationSnapshot struct {
+	Latitude   float64   `json:"lat"`
+	Longitude  float64   `json:"lng"`
+	RecordedAt time.Time `json:"recorded_at"`
+}
+
+type StartSessionInput struct {
+	Latitude   *float64
+	Longitude  *float64
+	RecordedAt time.Time
+}
+
+type ActiveTrustedContactAlert struct {
+	SessionID        string     `json:"session_id"`
+	TrustedContactID string     `json:"trusted_contact_id"`
+	ViewerToken      string     `json:"viewer_token"`
+	ReporterName     string     `json:"reporter_name"`
+	ReporterPhone    string     `json:"reporter_phone"`
+	StartedAt        time.Time  `json:"started_at"`
+	Latitude         *float64   `json:"lat,omitempty"`
+	Longitude        *float64   `json:"lng,omitempty"`
+	RecordedAt       *time.Time `json:"recorded_at,omitempty"`
+}
+
 type SSEBroadcaster struct {
 	mu          sync.RWMutex
 	subscribers map[string]map[chan ViewerEvent]struct{}
 }
 
 type Service struct {
-	repo                       Repository
-	broadcaster                *SSEBroadcaster
-	notifyTrustedContactsFunc  func(ctx context.Context, session *SOSSession) error
+	repo                      Repository
+	broadcaster               *SSEBroadcaster
+	notifyTrustedContactsFunc func(ctx context.Context, session *SOSSession) error
 }
 
 func NewService(repo Repository) *Service {
@@ -96,6 +120,10 @@ type CreateViewerGrantInput struct {
 }
 
 func (s *Service) StartSession(ctx context.Context, userID string) (*SOSSession, error) {
+	return s.StartSessionWithInput(ctx, userID, StartSessionInput{})
+}
+
+func (s *Service) StartSessionWithInput(ctx context.Context, userID string, input StartSessionInput) (_ *SOSSession, err error) {
 	userID = strings.TrimSpace(userID)
 	if userID == "" {
 		return nil, ErrInvalidUserID
@@ -116,6 +144,33 @@ func (s *Service) StartSession(ctx context.Context, userID string) (*SOSSession,
 		return nil, err
 	}
 
+	defer func() {
+		if err == nil {
+			return
+		}
+
+		if cleanupErr := s.markSessionEnded(ctx, session); cleanupErr != nil {
+			err = fmt.Errorf("%w: failed to clean up session %s: %v", err, session.ID, cleanupErr)
+		}
+	}()
+
+	if input.Latitude != nil || input.Longitude != nil {
+		if input.Latitude == nil {
+			return nil, ErrInvalidLatitude
+		}
+		if input.Longitude == nil {
+			return nil, ErrInvalidLongitude
+		}
+
+		recordedAt := input.RecordedAt
+		if recordedAt.IsZero() {
+			recordedAt = session.StartedAt
+		}
+		if err := s.RecordLocationPing(ctx, session.ID, userID, *input.Latitude, *input.Longitude, recordedAt); err != nil {
+			return nil, err
+		}
+	}
+
 	if s.notifyTrustedContactsFunc != nil {
 		if err := s.notifyTrustedContactsFunc(ctx, session); err != nil {
 			return nil, err
@@ -123,6 +178,15 @@ func (s *Service) StartSession(ctx context.Context, userID string) (*SOSSession,
 	}
 
 	return session, nil
+}
+
+func (s *Service) GetActiveSession(ctx context.Context, userID string) (*SOSSession, error) {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return nil, ErrInvalidUserID
+	}
+
+	return s.repo.GetActiveSessionByUserID(ctx, userID)
 }
 
 func (s *Service) GetSession(ctx context.Context, sessionID, userID string) (*SOSSession, error) {
@@ -154,8 +218,21 @@ func (s *Service) EndSession(ctx context.Context, sessionID, userID string) (*SO
 		return nil, err
 	}
 
+	return s.endLoadedSession(ctx, session)
+}
+
+func (s *Service) EndActiveSession(ctx context.Context, userID string) (*SOSSession, error) {
+	session, err := s.GetActiveSession(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.endLoadedSession(ctx, session)
+}
+
+func (s *Service) endLoadedSession(ctx context.Context, session *SOSSession) (*SOSSession, error) {
 	if session.Status == SessionStatusEnded {
-		return nil, ErrSessionAlreadyEnded
+		return session, nil
 	}
 
 	endedAt := time.Now().UTC()
@@ -169,7 +246,30 @@ func (s *Service) EndSession(ctx context.Context, sessionID, userID string) (*SO
 	return session, nil
 }
 
+func (s *Service) markSessionEnded(ctx context.Context, session *SOSSession) error {
+	if session == nil || strings.TrimSpace(session.ID) == "" {
+		return nil
+	}
+	if session.Status == SessionStatusEnded && session.EndedAt != nil {
+		return nil
+	}
+
+	endedAt := time.Now().UTC()
+	session.Status = SessionStatusEnded
+	session.EndedAt = &endedAt
+
+	return s.repo.UpdateSession(ctx, session)
+}
+
 func (s *Service) CreateViewerGrant(ctx context.Context, sessionID, userID string, input CreateViewerGrantInput) (*SOSViewerGrant, string, error) {
+	return s.issueViewerGrant(ctx, sessionID, userID, input.TrustedContactID, false)
+}
+
+func (s *Service) ReplaceViewerGrant(ctx context.Context, sessionID, userID, trustedContactID string) (*SOSViewerGrant, string, error) {
+	return s.issueViewerGrant(ctx, sessionID, userID, trustedContactID, true)
+}
+
+func (s *Service) issueViewerGrant(ctx context.Context, sessionID, userID, trustedContactID string, replaceExisting bool) (*SOSViewerGrant, string, error) {
 	session, err := s.GetSession(ctx, sessionID, userID)
 	if err != nil {
 		return nil, "", err
@@ -179,7 +279,6 @@ func (s *Service) CreateViewerGrant(ctx context.Context, sessionID, userID strin
 		return nil, "", ErrSessionAlreadyEnded
 	}
 
-	trustedContactID := strings.TrimSpace(input.TrustedContactID)
 	if trustedContactID == "" {
 		return nil, "", ErrInvalidTrustedContactID
 	}
@@ -193,10 +292,16 @@ func (s *Service) CreateViewerGrant(ctx context.Context, sessionID, userID strin
 	}
 
 	now := time.Now().UTC()
-	if _, err := s.repo.GetActiveViewerGrantBySessionContact(ctx, sessionID, trustedContactID, now); err == nil {
-		return nil, "", ErrViewerGrantConflict
-	} else if !errors.Is(err, ErrViewerGrantNotFound) {
-		return nil, "", err
+	if replaceExisting {
+		if err := s.repo.RevokeActiveViewerGrantBySessionContact(ctx, sessionID, trustedContactID, now); err != nil {
+			return nil, "", err
+		}
+	} else {
+		if _, err := s.repo.GetActiveViewerGrantBySessionContact(ctx, sessionID, trustedContactID, now); err == nil {
+			return nil, "", ErrViewerGrantConflict
+		} else if !errors.Is(err, ErrViewerGrantNotFound) {
+			return nil, "", err
+		}
 	}
 
 	token, tokenHash, err := GenerateViewerToken()
@@ -208,6 +313,7 @@ func (s *Service) CreateViewerGrant(ctx context.Context, sessionID, userID strin
 		SessionID:        sessionID,
 		UserID:           userID,
 		TrustedContactID: trustedContactID,
+		Token:            token,
 		TokenHash:        tokenHash,
 		ExpiresAt:        now.Add(defaultViewerGrantTTL),
 	}
@@ -217,6 +323,62 @@ func (s *Service) CreateViewerGrant(ctx context.Context, sessionID, userID strin
 	}
 
 	return grant, token, nil
+}
+
+func (s *Service) GetLatestLocation(ctx context.Context, sessionID string) (*LocationSnapshot, error) {
+	sessionID = strings.TrimSpace(sessionID)
+	if sessionID == "" {
+		return nil, ErrInvalidSessionID
+	}
+
+	return s.repo.GetLatestLocationPing(ctx, sessionID)
+}
+
+func (s *Service) ListActiveAlerts(ctx context.Context, viewerPhone string) ([]ActiveTrustedContactAlert, error) {
+	viewerPhone = strings.TrimSpace(viewerPhone)
+	if viewerPhone == "" {
+		return nil, ErrInvalidUserID
+	}
+
+	alerts, err := s.repo.ListActiveSessionAlertsByViewerPhone(ctx, viewerPhone)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]ActiveTrustedContactAlert, 0, len(alerts))
+	now := time.Now().UTC()
+	for _, alert := range alerts {
+		var token string
+
+		grant, grantErr := s.repo.GetActiveViewerGrantBySessionContact(ctx, alert.SessionID, alert.TrustedContactID, now)
+		switch {
+		case grantErr == nil && strings.TrimSpace(grant.Token) != "":
+			token = grant.Token
+		case grantErr == nil:
+			_, token, grantErr = s.ReplaceViewerGrant(ctx, alert.SessionID, alert.UserID, alert.TrustedContactID)
+		case errors.Is(grantErr, ErrViewerGrantNotFound):
+			_, token, grantErr = s.CreateViewerGrant(ctx, alert.SessionID, alert.UserID, CreateViewerGrantInput{
+				TrustedContactID: alert.TrustedContactID,
+			})
+		}
+		if grantErr != nil {
+			continue
+		}
+
+		results = append(results, ActiveTrustedContactAlert{
+			SessionID:        alert.SessionID,
+			TrustedContactID: alert.TrustedContactID,
+			ViewerToken:      token,
+			ReporterName:     alert.ReporterName,
+			ReporterPhone:    alert.ReporterPhone,
+			StartedAt:        alert.StartedAt,
+			Latitude:         alert.Latitude,
+			Longitude:        alert.Longitude,
+			RecordedAt:       alert.RecordedAt,
+		})
+	}
+
+	return results, nil
 }
 
 func (s *Service) AuthorizeViewer(ctx context.Context, token string) (*SOSViewerGrant, *SOSSession, error) {
