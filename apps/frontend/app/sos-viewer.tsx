@@ -36,13 +36,31 @@ const { width, height } = Dimensions.get('window');
 type ConnectionStatus = 'connecting' | 'connected' | 'error' | 'ended';
 
 export default function SOSViewerScreen() {
-    const params = useLocalSearchParams<{ token?: string; contactName?: string }>();
+    const params = useLocalSearchParams<{ token?: string; contactName?: string; lat?: string; lng?: string }>();
     const viewerToken = params.token || '';
     const contactName = params.contactName || 'Contact';
+    const initialLatitude = params.lat ? Number.parseFloat(params.lat) : undefined;
+    const initialLongitude = params.lng ? Number.parseFloat(params.lng) : undefined;
 
     const [status, setStatus] = useState<ConnectionStatus>('connecting');
-    const [currentLocation, setCurrentLocation] = useState<LocationPing | null>(null);
-    const [locationHistory, setLocationHistory] = useState<LocationPing[]>([]);
+    const [currentLocation, setCurrentLocation] = useState<LocationPing | null>(
+        Number.isFinite(initialLatitude) && Number.isFinite(initialLongitude)
+            ? {
+                lat: initialLatitude as number,
+                lng: initialLongitude as number,
+                ts: new Date().toISOString(),
+            }
+            : null
+    );
+    const [locationHistory, setLocationHistory] = useState<LocationPing[]>(
+        Number.isFinite(initialLatitude) && Number.isFinite(initialLongitude)
+            ? [{
+                lat: initialLatitude as number,
+                lng: initialLongitude as number,
+                ts: new Date().toISOString(),
+            }]
+            : []
+    );
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -91,6 +109,16 @@ export default function SOSViewerScreen() {
         const handleError = (error: Error) => {
             console.error('SOS Viewer stream error:', error);
             setStatus('error');
+            const message = error.message.toLowerCase();
+            if (
+                message.includes('viewer grant revoked') ||
+                message.includes('viewer grant expired') ||
+                message.includes('viewer token is invalid')
+            ) {
+                setErrorMessage('This SOS link is no longer valid. Open the latest alert again.');
+                return;
+            }
+
             setErrorMessage(error.message || 'Connection failed');
         };
 

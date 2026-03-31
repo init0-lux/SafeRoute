@@ -112,14 +112,14 @@ func main() {
 		authMiddleware.VerifyUser(),
 	)
 
-	var notificationSender notify.Sender
-	if cfg.Environment == "production" {
-		slog.Info("initializing Expo Push notification sender")
-		notificationSender = notify.NewExpoPushSender()
-	} else {
-		slog.Info("initializing Dev notification sender (logging only)")
-		notificationSender = notify.NewDevSender(slog.Default())
-	}
+	notificationSender := notify.NewMultiSender()
+	notificationSender.Register(notify.ChannelPush, notify.NewExpoPushSender())
+
+	devSender := notify.NewDevSender(slog.Default())
+	notificationSender.Register(notify.ChannelSMS, devSender)
+	notificationSender.Register(notify.ChannelEmail, devSender)
+
+	slog.Info("initialized notification senders", "push", "expo", "fallback", "dev-log")
 
 	trustedContactsService := trustedcontacts.NewService(trustedContactsRepo, auth.NewRepository(database))
 	trustedContactsHandler := trustedcontacts.NewHandler(

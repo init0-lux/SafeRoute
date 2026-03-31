@@ -23,8 +23,22 @@ type Handler struct {
 }
 
 type sessionEnvelope struct {
-	Session              sessionResponse              `json:"session"`
+	Session             sessionResponse            `json:"session"`
 	NotificationSummary *NotificationFanoutSummary `json:"notification_summary,omitempty"`
+}
+
+type activeAlertsEnvelope struct {
+	Alerts []ActiveTrustedContactAlert `json:"alerts"`
+}
+
+type viewerStatusEnvelope struct {
+	SessionID        string        `json:"session_id"`
+	TrustedContactID string        `json:"trusted_contact_id"`
+	Status           SessionStatus `json:"status"`
+	EndedAt          *time.Time    `json:"ended_at,omitempty"`
+	Latitude         *float64      `json:"lat,omitempty"`
+	Longitude        *float64      `json:"lng,omitempty"`
+	RecordedAt       *time.Time    `json:"recorded_at,omitempty"`
 }
 
 type viewerGrantEnvelope struct {
@@ -39,6 +53,12 @@ type sessionResponse struct {
 	Status    SessionStatus `json:"status"`
 	StartedAt time.Time     `json:"started_at"`
 	EndedAt   *time.Time    `json:"ended_at"`
+}
+
+type startSessionPayload struct {
+	Latitude   *float64  `json:"lat"`
+	Longitude  *float64  `json:"lng"`
+	RecordedAt time.Time `json:"ts"`
 }
 
 type viewerGrantPayload struct {
@@ -76,6 +96,10 @@ func NewHandler(service *Service, authMiddleware *auth.Middleware) *Handler {
 func (h *Handler) RegisterRoutes(router fiber.Router) {
 	sosRoutes := router.Group("/sos")
 	sosRoutes.Post("/start", h.auth.VerifyUser(), h.start)
+	sosRoutes.Get("/active", h.auth.VerifyUser(), h.getActive)
+	sosRoutes.Post("/active/end", h.auth.VerifyUser(), h.endActive)
+	sosRoutes.Get("/alerts/active", h.auth.VerifyUser(), h.listActiveAlerts)
+	sosRoutes.Get("/viewer/status", h.viewerStatus)
 	sosRoutes.Get("/:id", h.auth.VerifyUser(), h.get)
 	sosRoutes.Post("/:id/end", h.auth.VerifyUser(), h.end)
 	sosRoutes.Post("/:id/ping", h.auth.VerifyUser(), h.ping)
@@ -90,7 +114,20 @@ func (h *Handler) start(c *fiber.Ctx) error {
 		return writeSOSError(c, auth.ErrUnauthorized)
 	}
 
-	session, err := h.service.StartSession(c.UserContext(), user.ID)
+	var payload startSessionPayload
+	if len(c.Body()) > 0 {
+		if err := c.BodyParser(&payload); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "invalid request body",
+			})
+		}
+	}
+
+	session, err := h.service.StartSessionWithInput(c.UserContext(), user.ID, StartSessionInput{
+		Latitude:   payload.Latitude,
+		Longitude:  payload.Longitude,
+		RecordedAt: payload.RecordedAt,
+	})
 	if err != nil {
 		return writeSOSError(c, err)
 	}
@@ -101,6 +138,66 @@ func (h *Handler) start(c *fiber.Ctx) error {
 		Session:             newSessionResponse(session),
 		NotificationSummary: summary,
 	})
+}
+
+func (h *Handler) listActiveAlerts(c *fiber.Ctx) error {
+	user, ok := auth.CurrentUser(c)
+	if !ok {
+		return writeSOSError(c, auth.ErrUnauthorized)
+	}
+
+	alerts, err := h.service.ListActiveAlerts(c.UserContext(), user.Phone)
+	if err != nil {
+		return writeSOSError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(activeAlertsEnvelope{
+		Alerts: alerts,
+	})
+}
+
+func (h *Handler) getActive(c *fiber.Ctx) error {
+	user, ok := auth.CurrentUser(c)
+	if !ok {
+		return writeSOSError(c, auth.ErrUnauthorized)
+	}
+
+	session, err := h.service.GetActiveSession(c.UserContext(), user.ID)
+	if err != nil {
+		return writeSOSError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(sessionEnvelope{
+		Session: newSessionResponse(session),
+	})
+}
+
+func (h *Handler) viewerStatus(c *fiber.Ctx) error {
+	token := strings.TrimSpace(c.Query("token"))
+	grant, session, err := h.service.AuthorizeViewer(c.UserContext(), token)
+	if err != nil {
+		return writeSOSError(c, err)
+	}
+
+	latestLocation, err := h.service.GetLatestLocation(c.UserContext(), session.ID)
+	if err != nil {
+		return writeSOSError(c, err)
+	}
+
+	response := viewerStatusEnvelope{
+		SessionID:        grant.SessionID,
+		TrustedContactID: grant.TrustedContactID,
+		Status:           session.Status,
+		EndedAt:          session.EndedAt,
+	}
+	if latestLocation != nil {
+		response.Latitude = &latestLocation.Latitude
+		response.Longitude = &latestLocation.Longitude
+		recordedAt := latestLocation.RecordedAt.UTC()
+		response.RecordedAt = &recordedAt
+	}
+
+	return c.Status(fiber.StatusOK).JSON(response)
 }
 
 func (h *Handler) get(c *fiber.Ctx) error {
@@ -126,6 +223,22 @@ func (h *Handler) end(c *fiber.Ctx) error {
 	}
 
 	session, err := h.service.EndSession(c.UserContext(), c.Params("id"), user.ID)
+	if err != nil {
+		return writeSOSError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(sessionEnvelope{
+		Session: newSessionResponse(session),
+	})
+}
+
+func (h *Handler) endActive(c *fiber.Ctx) error {
+	user, ok := auth.CurrentUser(c)
+	if !ok {
+		return writeSOSError(c, auth.ErrUnauthorized)
+	}
+
+	session, err := h.service.EndActiveSession(c.UserContext(), user.ID)
 	if err != nil {
 		return writeSOSError(c, err)
 	}
@@ -212,8 +325,8 @@ func (h *Handler) viewerStream(c *fiber.Ctx) error {
 		defer unsubscribe()
 
 		readyPayload, marshalErr := json.Marshal(fiber.Map{
-			"session_id":         grant.SessionID,
-			"trusted_contact_id": grant.TrustedContactID,
+			"session_id": grant.SessionID,
+			"contact_id": grant.TrustedContactID,
 		})
 		if marshalErr == nil {
 			if _, writeErr := fmt.Fprint(w, FormatSSEEvent("ready", string(readyPayload))); writeErr != nil {
@@ -221,6 +334,25 @@ func (h *Handler) viewerStream(c *fiber.Ctx) error {
 			}
 			if flushErr := w.Flush(); flushErr != nil {
 				return
+			}
+		}
+
+		latestLocation, latestErr := h.service.GetLatestLocation(context.Background(), session.ID)
+		if latestErr == nil && latestLocation != nil {
+			payload, marshalErr := json.Marshal(ViewerEvent{
+				SessionID:   session.ID,
+				Latitude:    latestLocation.Latitude,
+				Longitude:   latestLocation.Longitude,
+				RecordedAt:  latestLocation.RecordedAt.UTC(),
+				PublishedAt: time.Now().UTC(),
+			})
+			if marshalErr == nil {
+				if _, writeErr := fmt.Fprint(w, FormatSSEEvent("location", string(payload))); writeErr != nil {
+					return
+				}
+				if flushErr := w.Flush(); flushErr != nil {
+					return
+				}
 			}
 		}
 

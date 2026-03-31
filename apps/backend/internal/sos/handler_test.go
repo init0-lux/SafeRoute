@@ -68,6 +68,39 @@ func TestSOSStartRejectsSecondActiveSession(t *testing.T) {
 	}
 }
 
+func TestSOSActiveSessionRoutes(t *testing.T) {
+	authRepo := newMemoryAuthRepository()
+	sosRepo := newMemorySOSRepository()
+	application, accessCookie := newSOSApp(t, authRepo, sosRepo)
+
+	startResp := performJSONRequest(t, application, http.MethodPost, "/api/v1/sos/start", map[string]any{}, []*http.Cookie{accessCookie})
+	if startResp.StatusCode != http.StatusCreated {
+		t.Fatalf("expected start status 201, got %d", startResp.StatusCode)
+	}
+
+	activeResp := performJSONRequest(t, application, http.MethodGet, "/api/v1/sos/active", nil, []*http.Cookie{accessCookie})
+	if activeResp.StatusCode != http.StatusOK {
+		t.Fatalf("expected active session status 200, got %d", activeResp.StatusCode)
+	}
+
+	activeBody := decodeBody(t, activeResp)
+	activeSession := activeBody["session"].(map[string]any)
+	if activeSession["status"] != "active" {
+		t.Fatalf("expected active session status, got %#v", activeSession["status"])
+	}
+
+	endResp := performJSONRequest(t, application, http.MethodPost, "/api/v1/sos/active/end", map[string]any{}, []*http.Cookie{accessCookie})
+	if endResp.StatusCode != http.StatusOK {
+		t.Fatalf("expected end active status 200, got %d", endResp.StatusCode)
+	}
+
+	endBody := decodeBody(t, endResp)
+	endedSession := endBody["session"].(map[string]any)
+	if endedSession["status"] != "ended" {
+		t.Fatalf("expected ended status, got %#v", endedSession["status"])
+	}
+}
+
 func TestSOSWebSocketPersistsLocationPing(t *testing.T) {
 	authRepo := newMemoryAuthRepository()
 	sosRepo := newMemorySOSRepository()
@@ -319,6 +352,8 @@ type memorySOSRepository struct {
 	pings           map[string][]storedPing
 	viewerGrants    map[string]*sos.SOSViewerGrant
 	trustedContacts map[string]map[string]struct{}
+	contactPhones   map[string]string
+	createPingErr   error
 }
 
 type storedPing struct {
@@ -333,6 +368,7 @@ func newMemorySOSRepository() *memorySOSRepository {
 		pings:           make(map[string][]storedPing),
 		viewerGrants:    make(map[string]*sos.SOSViewerGrant),
 		trustedContacts: make(map[string]map[string]struct{}),
+		contactPhones:   make(map[string]string),
 	}
 }
 
@@ -398,6 +434,10 @@ func (r *memorySOSRepository) CreateLocationPing(_ context.Context, sessionID st
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	if r.createPingErr != nil {
+		return r.createPingErr
+	}
+
 	r.pings[sessionID] = append(r.pings[sessionID], storedPing{
 		Latitude:   latitude,
 		Longitude:  longitude,
@@ -405,6 +445,23 @@ func (r *memorySOSRepository) CreateLocationPing(_ context.Context, sessionID st
 	})
 
 	return nil
+}
+
+func (r *memorySOSRepository) GetLatestLocationPing(_ context.Context, sessionID string) (*sos.LocationSnapshot, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	pings := r.pings[sessionID]
+	if len(pings) == 0 {
+		return nil, nil
+	}
+
+	latest := pings[len(pings)-1]
+	return &sos.LocationSnapshot{
+		Latitude:   latest.Latitude,
+		Longitude:  latest.Longitude,
+		RecordedAt: latest.RecordedAt,
+	}, nil
 }
 
 func (r *memorySOSRepository) CreateViewerGrant(_ context.Context, grant *sos.SOSViewerGrant) error {
@@ -429,6 +486,23 @@ func (r *memorySOSRepository) CreateViewerGrant(_ context.Context, grant *sos.SO
 	r.viewerGrants[clone.ID] = clone
 	grant.ID = clone.ID
 	grant.CreatedAt = clone.CreatedAt
+
+	return nil
+}
+
+func (r *memorySOSRepository) RevokeActiveViewerGrantBySessionContact(_ context.Context, sessionID, trustedContactID string, revokedAt time.Time) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, grant := range r.viewerGrants {
+		if grant.SessionID == sessionID &&
+			grant.TrustedContactID == trustedContactID &&
+			grant.RevokedAt == nil &&
+			grant.ExpiresAt.After(revokedAt) {
+			revokedAtCopy := revokedAt.UTC()
+			grant.RevokedAt = &revokedAtCopy
+		}
+	}
 
 	return nil
 }
@@ -475,6 +549,52 @@ func (r *memorySOSRepository) IsTrustedContactOwnedByUser(_ context.Context, use
 	return exists, nil
 }
 
+func (r *memorySOSRepository) ListActiveSessionAlertsByViewerPhone(_ context.Context, viewerPhone string) ([]sos.ActiveSessionAlert, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	alerts := make([]sos.ActiveSessionAlert, 0)
+	for _, session := range r.sessions {
+		if session.Status != sos.SessionStatusActive || session.UserID == nil {
+			continue
+		}
+
+		reporterContacts := r.trustedContacts[*session.UserID]
+		for trustedContactID := range reporterContacts {
+			if r.contactPhones[userContactKey(*session.UserID, trustedContactID)] != viewerPhone {
+				continue
+			}
+
+			var latitude *float64
+			var longitude *float64
+			var recordedAt *time.Time
+			if pings := r.pings[session.ID]; len(pings) > 0 {
+				latest := pings[len(pings)-1]
+				lat := latest.Latitude
+				lng := latest.Longitude
+				recorded := latest.RecordedAt
+				latitude = &lat
+				longitude = &lng
+				recordedAt = &recorded
+			}
+
+			alerts = append(alerts, sos.ActiveSessionAlert{
+				SessionID:        session.ID,
+				UserID:           *session.UserID,
+				TrustedContactID: trustedContactID,
+				ReporterName:     *session.UserID,
+				ReporterPhone:    *session.UserID,
+				StartedAt:        session.StartedAt,
+				Latitude:         latitude,
+				Longitude:        longitude,
+				RecordedAt:       recordedAt,
+			})
+		}
+	}
+
+	return alerts, nil
+}
+
 func (r *memorySOSRepository) AddTrustedContact(userID, trustedContactID string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -485,11 +605,26 @@ func (r *memorySOSRepository) AddTrustedContact(userID, trustedContactID string)
 	r.trustedContacts[userID][trustedContactID] = struct{}{}
 }
 
+func (r *memorySOSRepository) AddTrustedContactWithPhone(userID, trustedContactID, viewerPhone string) {
+	r.AddTrustedContact(userID, trustedContactID)
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.contactPhones[userContactKey(userID, trustedContactID)] = viewerPhone
+}
+
 func (r *memorySOSRepository) LocationPingCount(sessionID string) int {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	return len(r.pings[sessionID])
+}
+
+func (r *memorySOSRepository) SetCreateLocationPingErr(err error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.createPingErr = err
 }
 
 func cloneSession(session *sos.SOSSession) *sos.SOSSession {
@@ -515,4 +650,8 @@ func cloneViewerGrant(grant *sos.SOSViewerGrant) *sos.SOSViewerGrant {
 	}
 
 	return &clone
+}
+
+func userContactKey(userID, trustedContactID string) string {
+	return userID + "|" + trustedContactID
 }

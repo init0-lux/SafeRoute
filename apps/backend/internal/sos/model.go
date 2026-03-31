@@ -46,6 +46,7 @@ type SOSViewerGrant struct {
 	UserID           string                         `gorm:"type:uuid;not null;index"`
 	TrustedContactID string                         `gorm:"column:trusted_contact_id;type:uuid;not null;index;uniqueIndex:ux_sos_viewer_grants_session_contact_active,priority:2"`
 	TrustedContact   trustedcontacts.TrustedContact `gorm:"constraint:OnDelete:CASCADE;foreignKey:TrustedContactID;references:ID"`
+	Token            string                         `gorm:"column:token;type:text"`
 	TokenHash        string                         `gorm:"column:token_hash;type:text;not null;uniqueIndex"`
 	RevokedAt        *time.Time                     `gorm:"column:revoked_at;type:timestamptz;uniqueIndex:ux_sos_viewer_grants_session_contact_active,priority:3"`
 	ExpiresAt        time.Time                      `gorm:"column:expires_at;type:timestamptz;not null;index"`

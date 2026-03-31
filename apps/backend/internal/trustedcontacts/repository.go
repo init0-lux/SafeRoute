@@ -17,7 +17,7 @@ type Repository interface {
 	ListTrustedContactsByUserID(ctx context.Context, userID string) ([]TrustedContact, error)
 	ListPendingRequestsForPhone(ctx context.Context, phone string, now time.Time) ([]TrustedContactRequest, error)
 	ListOutgoingRequestsByUserID(ctx context.Context, userID string) ([]TrustedContactRequest, error)
-	CompleteRequestAcceptance(ctx context.Context, request *TrustedContactRequest, contact *TrustedContact) error
+	CompleteRequestAcceptance(ctx context.Context, request *TrustedContactRequest, contact *TrustedContact, reciprocalContact *TrustedContact) error
 	UpdateRequestState(ctx context.Context, requestID string, status RequestStatus, respondedAt *time.Time) error
 	DeleteTrustedContact(ctx context.Context, userID, contactID string) error
 }
@@ -121,7 +121,7 @@ func (r *GormRepository) ListOutgoingRequestsByUserID(ctx context.Context, userI
 	return requests, nil
 }
 
-func (r *GormRepository) CompleteRequestAcceptance(ctx context.Context, request *TrustedContactRequest, contact *TrustedContact) error {
+func (r *GormRepository) CompleteRequestAcceptance(ctx context.Context, request *TrustedContactRequest, contact *TrustedContact, reciprocalContact *TrustedContact) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(contact).Error; err != nil {
 			var pgErr *pgconn.PgError
@@ -147,6 +147,28 @@ func (r *GormRepository) CompleteRequestAcceptance(ctx context.Context, request 
 
 		if result.RowsAffected == 0 {
 			return ErrRequestAlreadyProcessed
+		}
+
+		if reciprocalContact != nil {
+			var existing TrustedContact
+			err := tx.
+				Where("user_id = ? AND phone = ?", reciprocalContact.UserID, reciprocalContact.Phone).
+				First(&existing).Error
+			switch {
+			case err == nil:
+				return nil
+			case !errors.Is(err, gorm.ErrRecordNotFound):
+				return err
+			}
+
+			if err := tx.Create(reciprocalContact).Error; err != nil {
+				var pgErr *pgconn.PgError
+				if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+					return nil
+				}
+
+				return err
+			}
 		}
 
 		return nil

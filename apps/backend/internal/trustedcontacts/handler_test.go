@@ -21,7 +21,7 @@ import (
 )
 
 func TestTrustedContactRequestCanBeAcceptedAndRemoved(t *testing.T) {
-	application, accessCookie := newTrustedContactsApp(t)
+	application, accessCookie, helperCookie := newTrustedContactsApp(t)
 
 	createResp := performJSONRequest(t, application, http.MethodPost, "/api/v1/trusted-contacts/requests", map[string]string{
 		"name":  "Emergency Contact",
@@ -53,6 +53,22 @@ func TestTrustedContactRequestCanBeAcceptedAndRemoved(t *testing.T) {
 		t.Fatalf("expected normalized trusted contact phone, got %#v", contact["phone"])
 	}
 
+	helperContactsResp := performJSONRequest(t, application, http.MethodGet, "/api/v1/trusted-contacts/", nil, []*http.Cookie{helperCookie})
+	if helperContactsResp.StatusCode != http.StatusOK {
+		t.Fatalf("expected helper trusted contacts status 200, got %d", helperContactsResp.StatusCode)
+	}
+
+	helperContactsBody := decodeBody(t, helperContactsResp)
+	helperContacts := helperContactsBody["contacts"].([]any)
+	if len(helperContacts) != 1 {
+		t.Fatalf("expected helper user to receive reciprocal trusted contact, got %d", len(helperContacts))
+	}
+
+	helperContact := helperContacts[0].(map[string]any)
+	if helperContact["phone"] != "+919999911111" {
+		t.Fatalf("expected helper reciprocal trusted contact phone, got %#v", helperContact["phone"])
+	}
+
 	deleteResp := performJSONRequest(t, application, http.MethodDelete, "/api/v1/trusted-contacts/"+contact["id"].(string), nil, []*http.Cookie{accessCookie})
 	if deleteResp.StatusCode != http.StatusOK {
 		t.Fatalf("expected trusted contact delete status 200, got %d", deleteResp.StatusCode)
@@ -60,7 +76,7 @@ func TestTrustedContactRequestCanBeAcceptedAndRemoved(t *testing.T) {
 }
 
 func TestTrustedContactRequestRejectsDuplicatePendingRequest(t *testing.T) {
-	application, accessCookie := newTrustedContactsApp(t)
+	application, accessCookie, _ := newTrustedContactsApp(t)
 
 	payload := map[string]string{
 		"name":  "Primary Contact",
@@ -79,7 +95,7 @@ func TestTrustedContactRequestRejectsDuplicatePendingRequest(t *testing.T) {
 }
 
 func TestTrustedContactRequestRejectsInvalidAcceptToken(t *testing.T) {
-	application, accessCookie := newTrustedContactsApp(t)
+	application, accessCookie, _ := newTrustedContactsApp(t)
 
 	createResp := performJSONRequest(t, application, http.MethodPost, "/api/v1/trusted-contacts/requests", map[string]string{
 		"name":  "Emergency Contact",
@@ -97,7 +113,7 @@ func TestTrustedContactRequestRejectsInvalidAcceptToken(t *testing.T) {
 		t.Fatalf("expected invalid token status 400, got %d", acceptResp.StatusCode)
 	}
 }
-func newTrustedContactsApp(t *testing.T) (*fiber.App, *http.Cookie) {
+func newTrustedContactsApp(t *testing.T) (*fiber.App, *http.Cookie, *http.Cookie) {
 	t.Helper()
 
 	authRepo := newMemoryAuthRepository()
@@ -112,7 +128,7 @@ func newTrustedContactsApp(t *testing.T) (*fiber.App, *http.Cookie) {
 	}
 
 	// Seed the helper user so validation passes
-	_, err = authService.Register(context.Background(), auth.RegisterInput{
+	helperUser, err := authService.Register(context.Background(), auth.RegisterInput{
 		Username: "helper",
 		Phone:    "+918888822222",
 		Email:    "helper@example.com",
@@ -140,6 +156,11 @@ func newTrustedContactsApp(t *testing.T) (*fiber.App, *http.Cookie) {
 		t.Fatalf("failed to issue auth session pair: %v", err)
 	}
 
+	helperPair, err := sessionManager.IssuePair(*helperUser)
+	if err != nil {
+		t.Fatalf("failed to issue helper auth session pair: %v", err)
+	}
+
 	authMiddleware := auth.NewMiddleware(authService, sessionManager)
 	handler := trustedcontacts.NewHandler(trustedcontacts.NewService(newMemoryRepository(), authRepo), authMiddleware)
 	application := appcore.New(config.Config{
@@ -149,10 +170,14 @@ func newTrustedContactsApp(t *testing.T) (*fiber.App, *http.Cookie) {
 	}, handler.RegisterRoutes)
 
 	return application, &http.Cookie{
-		Name:  "test_access",
-		Value: pair.AccessToken,
-		Path:  "/",
-	}
+			Name:  "test_access",
+			Value: pair.AccessToken,
+			Path:  "/",
+		}, &http.Cookie{
+			Name:  "test_access",
+			Value: helperPair.AccessToken,
+			Path:  "/",
+		}
 }
 
 func performJSONRequest(t *testing.T, application *fiber.App, method, path string, payload any, cookies []*http.Cookie) *http.Response {
@@ -374,7 +399,41 @@ func (r *memoryRepository) ListTrustedContactsByUserID(_ context.Context, userID
 	return contacts, nil
 }
 
-func (r *memoryRepository) CompleteRequestAcceptance(_ context.Context, request *trustedcontacts.TrustedContactRequest, contact *trustedcontacts.TrustedContact) error {
+func (r *memoryRepository) ListPendingRequestsForPhone(_ context.Context, phone string, now time.Time) ([]trustedcontacts.TrustedContactRequest, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	requests := make([]trustedcontacts.TrustedContactRequest, 0)
+	for _, request := range r.requestsByID {
+		if request.Phone != phone || request.Status != trustedcontacts.RequestStatusPending || !request.ExpiresAt.After(now) {
+			continue
+		}
+
+		copyRequest := *request
+		requests = append(requests, copyRequest)
+	}
+
+	return requests, nil
+}
+
+func (r *memoryRepository) ListOutgoingRequestsByUserID(_ context.Context, userID string) ([]trustedcontacts.TrustedContactRequest, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	requests := make([]trustedcontacts.TrustedContactRequest, 0)
+	for _, request := range r.requestsByID {
+		if request.UserID != userID || request.Status != trustedcontacts.RequestStatusPending {
+			continue
+		}
+
+		copyRequest := *request
+		requests = append(requests, copyRequest)
+	}
+
+	return requests, nil
+}
+
+func (r *memoryRepository) CompleteRequestAcceptance(_ context.Context, request *trustedcontacts.TrustedContactRequest, contact *trustedcontacts.TrustedContact, reciprocalContact *trustedcontacts.TrustedContact) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -404,6 +463,21 @@ func (r *memoryRepository) CompleteRequestAcceptance(_ context.Context, request 
 	storedRequest.Status = trustedcontacts.RequestStatusAccepted
 	storedRequest.RespondedAt = request.RespondedAt
 	storedRequest.AcceptedContactID = &copyContact.ID
+
+	if reciprocalContact != nil {
+		if _, exists := r.contactsByPhone[userPhoneKey(reciprocalContact.UserID, reciprocalContact.Phone)]; !exists {
+			r.nextContactID++
+			copyReciprocal := *reciprocalContact
+			copyReciprocal.ID = fmt.Sprintf("contact-%d", r.nextContactID)
+			if copyReciprocal.CreatedAt.IsZero() {
+				copyReciprocal.CreatedAt = time.Now().UTC()
+			}
+			r.contactsByID[copyReciprocal.ID] = &copyReciprocal
+			r.contactsByPhone[userPhoneKey(copyReciprocal.UserID, copyReciprocal.Phone)] = &copyReciprocal
+			reciprocalContact.ID = copyReciprocal.ID
+			reciprocalContact.CreatedAt = copyReciprocal.CreatedAt
+		}
+	}
 
 	return nil
 }
