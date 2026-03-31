@@ -10,6 +10,9 @@ import {
 import { router } from 'expo-router';
 import { Colors, Spacing, BorderRadius, FontSizes } from '@/constants/theme';
 import PulseAnimation from '@/components/PulseAnimation';
+import * as Location from 'expo-location';
+import { startSOS, endSOS, pingSOSLocation, createViewerGrant } from '@/services/sos';
+import { getTrustedContacts } from '@/services/contacts';
 
 const { width } = Dimensions.get('window');
 
@@ -18,8 +21,18 @@ type Phase = 'countdown' | 'calling';
 export default function SOSScreen() {
     const [count, setCount] = useState(3);
     const [phase, setPhase] = useState<Phase>('countdown');
+    const [sessionId, setSessionId] = useState<string | null>(null);
+    const [isCancelling, setIsCancelling] = useState(false);
+    const [contactCount, setContactCount] = useState(0);
     const scaleAnim = useRef(new Animated.Value(0.5)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
+    const pollingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    // Get location permissions and contact count early
+    useEffect(() => {
+        Location.requestForegroundPermissionsAsync();
+        getTrustedContacts().then((c) => setContactCount(c.length)).catch(() => {});
+    }, []);
 
     // Animate each number
     const animateNumber = () => {
@@ -56,7 +69,7 @@ export default function SOSScreen() {
     };
 
     useEffect(() => {
-        if (phase !== 'countdown') return;
+        if (phase !== 'countdown' || isCancelling) return;
 
         animateNumber();
 
@@ -64,6 +77,7 @@ export default function SOSScreen() {
             // After showing 0, switch to calling phase
             const timer = setTimeout(() => {
                 setPhase('calling');
+                triggerSOS();
             }, 1000);
             return () => clearTimeout(timer);
         }
@@ -73,7 +87,50 @@ export default function SOSScreen() {
         }, 1000);
 
         return () => clearTimeout(timer);
-    }, [count, phase]);
+    }, [count, phase, isCancelling]);
+
+    const triggerSOS = async () => {
+        try {
+            const session = await startSOS();
+            setSessionId(session.id);
+
+            // Create viewer grants for all trusted contacts so they get notified
+            const contacts = await getTrustedContacts();
+            for (const contact of contacts) {
+                try {
+                    await createViewerGrant(session.id, contact.id);
+                } catch (grantErr) {
+                    console.warn(`Failed to create viewer grant for ${contact.name}:`, grantErr);
+                }
+            }
+
+            tickLocation(session.id);
+            // 5 second polling
+            pollingInterval.current = setInterval(() => {
+                tickLocation(session.id);
+            }, 5000);
+        } catch (err) {
+            console.error('Failed to start SOS:', err);
+        }
+    };
+
+    const tickLocation = async (activeSessionId: string) => {
+        try {
+            const { coords } = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+            await pingSOSLocation(activeSessionId, coords.latitude, coords.longitude);
+        } catch (err) {
+            console.error('Location polling failed:', err);
+        }
+    };
+
+    // Clean up interval on unmount
+    useEffect(() => {
+        return () => {
+            if (pollingInterval.current) {
+                clearInterval(pollingInterval.current);
+            }
+        };
+    }, []);
 
     // Animate "calling" text entrance
     const callingScale = useRef(new Animated.Value(0.3)).current;
@@ -97,7 +154,21 @@ export default function SOSScreen() {
         ]).start();
     }, [phase]);
 
-    const handleCancel = () => {
+    const handleCancel = async () => {
+        setIsCancelling(true);
+        if (pollingInterval.current) {
+            clearInterval(pollingInterval.current);
+            pollingInterval.current = null;
+        }
+
+        if (sessionId) {
+            try {
+                await endSOS(sessionId);
+            } catch (err) {
+                console.error('Failed to end SOS:', err);
+            }
+        }
+        
         router.back();
     };
 
@@ -111,7 +182,7 @@ export default function SOSScreen() {
                     </Text>
 
                     <Text style={styles.alertSub}>
-                        your location and live footage will be{'\n'}shared with 5 trusted contacts in
+                        your location and live footage will be{'\n'}shared with {contactCount} trusted contact{contactCount !== 1 ? 's' : ''} in
                     </Text>
 
                     {/* Countdown / Calling */}
@@ -149,9 +220,10 @@ export default function SOSScreen() {
 
             {/* Cancel button */}
             <TouchableOpacity
-                style={styles.cancelButton}
+                style={[styles.cancelButton, isCancelling && { opacity: 0.5 }]}
                 onPress={handleCancel}
                 activeOpacity={0.85}
+                disabled={isCancelling}
             >
                 <PulseAnimation
                     active={phase === 'countdown'}
@@ -160,7 +232,7 @@ export default function SOSScreen() {
                     maxScale={1.05}
                 >
                     <View style={styles.cancelInner}>
-                        <Text style={styles.cancelText}>cancel SOS</Text>
+                        <Text style={styles.cancelText}>{isCancelling ? 'cancelling...' : 'cancel SOS'}</Text>
                     </View>
                 </PulseAnimation>
             </TouchableOpacity>

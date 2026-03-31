@@ -35,6 +35,7 @@ func TestTrustMeReturnsBreakdown(t *testing.T) {
 	application := newTrustTestApp(t)
 
 	registerResp := performTrustJSONRequest(t, application, http.MethodPost, "/api/v1/auth/register", map[string]string{
+		"username": "testuser4",
 		"phone":    "+91 99999 11111",
 		"password": "supersecret",
 	}, nil)
@@ -62,6 +63,7 @@ func TestTrustVerifyUpdatesVerifiedFlag(t *testing.T) {
 	application := newTrustTestApp(t)
 
 	registerResp := performTrustJSONRequest(t, application, http.MethodPost, "/api/v1/auth/register", map[string]string{
+		"username": "testuser5",
 		"phone":    "+91 88888 11111",
 		"password": "supersecret",
 	}, nil)
@@ -89,6 +91,7 @@ func TestReportCreationUpdatesTrustCounts(t *testing.T) {
 	application := newTrustTestApp(t)
 
 	registerResp := performTrustJSONRequest(t, application, http.MethodPost, "/api/v1/auth/register", map[string]string{
+		"username": "testuser6",
 		"phone":    "+91 77777 11111",
 		"password": "supersecret",
 	}, nil)
@@ -221,12 +224,14 @@ type memoryTrustAuthRepository struct {
 	nextID  int
 	byID    map[string]*auth.User
 	byPhone map[string]*auth.User
+	byEmail map[string]*auth.User
 }
 
 func newMemoryTrustAuthRepository() *memoryTrustAuthRepository {
 	return &memoryTrustAuthRepository{
 		byID:    make(map[string]*auth.User),
 		byPhone: make(map[string]*auth.User),
+		byEmail: make(map[string]*auth.User),
 	}
 }
 
@@ -243,6 +248,9 @@ func (r *memoryTrustAuthRepository) CreateUser(_ context.Context, user *auth.Use
 	copyUser.ID = fmt.Sprintf("user-%d", r.nextID)
 	r.byID[copyUser.ID] = &copyUser
 	r.byPhone[copyUser.Phone] = &copyUser
+	if user.Email != nil {
+		r.byEmail[*user.Email] = &copyUser
+	}
 	user.ID = copyUser.ID
 
 	return nil
@@ -253,6 +261,19 @@ func (r *memoryTrustAuthRepository) GetUserByPhone(_ context.Context, phone stri
 	defer r.mu.Unlock()
 
 	user, exists := r.byPhone[strings.Join(strings.Fields(phone), "")]
+	if !exists {
+		return nil, auth.ErrUserNotFound
+	}
+
+	copyUser := *user
+	return &copyUser, nil
+}
+
+func (r *memoryTrustAuthRepository) GetUserByEmail(_ context.Context, email string) (*auth.User, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	user, exists := r.byEmail[email]
 	if !exists {
 		return nil, auth.ErrUserNotFound
 	}
@@ -367,7 +388,11 @@ func (r *memoryTrustReportsRepository) GetByID(_ context.Context, _ string) (*re
 }
 
 func (r *memoryTrustReportsRepository) ListEvidenceIDs(_ context.Context, _ string) ([]string, error) {
-	return []string{}, nil
+	return nil, nil
+}
+
+func (r *memoryTrustReportsRepository) ListByUserID(_ context.Context, _ string) ([]reports.StoredReport, error) {
+	return nil, nil
 }
 
 func (r *memoryTrustReportsRepository) ListNearby(_ context.Context, _ reports.NearbyParams) ([]reports.NearbyReportRow, error) {
@@ -376,4 +401,8 @@ func (r *memoryTrustReportsRepository) ListNearby(_ context.Context, _ reports.N
 
 func (r *memoryTrustReportsRepository) CountNearby(_ context.Context, _ reports.NearbyParams) (int64, error) {
 	return 0, nil
+}
+
+func (r *memoryTrustReportsRepository) ListUserHistory(ctx context.Context, userID string) ([]reports.ReportHistoryRow, error) {
+	return []reports.ReportHistoryRow{}, nil
 }

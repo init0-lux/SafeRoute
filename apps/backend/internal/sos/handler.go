@@ -78,6 +78,7 @@ func (h *Handler) RegisterRoutes(router fiber.Router) {
 	sosRoutes.Post("/start", h.auth.VerifyUser(), h.start)
 	sosRoutes.Get("/:id", h.auth.VerifyUser(), h.get)
 	sosRoutes.Post("/:id/end", h.auth.VerifyUser(), h.end)
+	sosRoutes.Post("/:id/ping", h.auth.VerifyUser(), h.ping)
 	sosRoutes.Post("/:id/viewers", h.auth.VerifyUser(), h.createViewerGrant)
 	sosRoutes.Get("/viewer/stream", h.viewerStream)
 	sosRoutes.Get("/:id/stream", h.auth.VerifyUser(), h.prepareStream, websocket.New(h.stream))
@@ -131,6 +132,34 @@ func (h *Handler) end(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(sessionEnvelope{
 		Session: newSessionResponse(session),
+	})
+}
+
+func (h *Handler) ping(c *fiber.Ctx) error {
+	user, ok := auth.CurrentUser(c)
+	if !ok {
+		return writeSOSError(c, auth.ErrUnauthorized)
+	}
+
+	var payload locationPingMessage
+	if err := c.BodyParser(&payload); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "invalid request body",
+		})
+	}
+
+	if err := h.service.RecordLocationPing(c.UserContext(), c.Params("id"), user.ID, payload.Latitude, payload.Longitude, payload.RecordedAt); err != nil {
+		return writeSOSError(c, err)
+	}
+
+	recordedAt := payload.RecordedAt
+	if recordedAt.IsZero() {
+		recordedAt = time.Now().UTC()
+	}
+
+	return c.Status(fiber.StatusOK).JSON(locationAck{
+		Status:     "accepted",
+		RecordedAt: recordedAt.UTC(),
 	})
 }
 

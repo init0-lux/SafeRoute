@@ -11,6 +11,7 @@ type RequestStatus string
 const (
 	RequestStatusPending   RequestStatus = "pending"
 	RequestStatusAccepted  RequestStatus = "accepted"
+	RequestStatusRejected  RequestStatus = "rejected"
 	RequestStatusCancelled RequestStatus = "cancelled"
 	RequestStatusExpired   RequestStatus = "expired"
 )

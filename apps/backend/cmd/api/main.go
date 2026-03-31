@@ -121,7 +121,7 @@ func main() {
 		notificationSender = notify.NewDevSender(slog.Default())
 	}
 
-	trustedContactsService := trustedcontacts.NewService(trustedContactsRepo)
+	trustedContactsService := trustedcontacts.NewService(trustedContactsRepo, auth.NewRepository(database))
 	trustedContactsHandler := trustedcontacts.NewHandler(
 		trustedContactsService,
 		authMiddleware,

@@ -40,6 +40,7 @@ func TestCreateReportCreatesAuthenticatedReport(t *testing.T) {
 	application := newReportsTestApp(t)
 
 	registerResp := performReportsJSONRequest(t, application, http.MethodPost, "/api/v1/auth/register", map[string]string{
+		"username": "testuser",
 		"phone":    "+91 99999 11111",
 		"password": "supersecret",
 	}, nil)
@@ -81,6 +82,7 @@ func TestCreateReportRejectsInvalidCoordinates(t *testing.T) {
 	application := newReportsTestApp(t)
 
 	registerResp := performReportsJSONRequest(t, application, http.MethodPost, "/api/v1/auth/register", map[string]string{
+		"username": "testuser2",
 		"phone":    "+91 88888 11111",
 		"password": "supersecret",
 	}, nil)
@@ -103,6 +105,7 @@ func TestCreateReportRejectsUnsupportedType(t *testing.T) {
 	application := newReportsTestApp(t)
 
 	registerResp := performReportsJSONRequest(t, application, http.MethodPost, "/api/v1/auth/register", map[string]string{
+		"username": "testuser3",
 		"phone":    "+91 77777 11111",
 		"password": "supersecret",
 	}, nil)
@@ -306,12 +309,14 @@ type memoryAuthRepository struct {
 	nextID  int
 	byID    map[string]*auth.User
 	byPhone map[string]*auth.User
+	byEmail map[string]*auth.User
 }
 
 func newMemoryAuthRepository() *memoryAuthRepository {
 	return &memoryAuthRepository{
 		byID:    make(map[string]*auth.User),
 		byPhone: make(map[string]*auth.User),
+		byEmail: make(map[string]*auth.User),
 	}
 }
 
@@ -328,6 +333,9 @@ func (r *memoryAuthRepository) CreateUser(_ context.Context, user *auth.User) er
 	copyUser.ID = uuid.NewString()
 	r.byID[copyUser.ID] = &copyUser
 	r.byPhone[copyUser.Phone] = &copyUser
+	if user.Email != nil {
+		r.byEmail[*user.Email] = &copyUser
+	}
 	user.ID = copyUser.ID
 
 	return nil
@@ -338,6 +346,19 @@ func (r *memoryAuthRepository) GetUserByPhone(_ context.Context, phone string) (
 	defer r.mu.Unlock()
 
 	user, exists := r.byPhone[strings.Join(strings.Fields(phone), "")]
+	if !exists {
+		return nil, auth.ErrUserNotFound
+	}
+
+	copyUser := *user
+	return &copyUser, nil
+}
+
+func (r *memoryAuthRepository) GetUserByEmail(_ context.Context, email string) (*auth.User, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	user, exists := r.byEmail[email]
 	if !exists {
 		return nil, auth.ErrUserNotFound
 	}
@@ -427,6 +448,44 @@ func (r *memoryReportsRepository) GetByID(_ context.Context, id string) (*report
 	return &copyReport, nil
 }
 
+func (r *memoryReportsRepository) ListByUserID(_ context.Context, userID string) ([]reports.StoredReport, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var result []reports.StoredReport
+	for _, report := range r.reports {
+		if report.UserID != nil && *report.UserID == userID {
+			result = append(result, report)
+		}
+	}
+	// Sort by created at descending
+	for i := 0; i < len(result); i++ {
+		for j := i + 1; j < len(result); j++ {
+			if result[j].CreatedAt.After(result[i].CreatedAt) {
+				result[i], result[j] = result[j], result[i]
+			}
+		}
+	}
+	return result, nil
+}
+
+func (r *memoryReportsRepository) ListUserHistory(ctx context.Context, userID string) ([]reports.ReportHistoryRow, error) {
+	reps, err := r.ListByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	history := make([]reports.ReportHistoryRow, len(reps))
+	for i, rep := range reps {
+		history[i] = reports.ReportHistoryRow{
+			StoredReport: rep,
+			Status:       "submitted",
+			Events:       []reports.ComplaintEventRow{},
+		}
+	}
+	return history, nil
+}
+
 func (r *memoryReportsRepository) ListEvidenceIDs(_ context.Context, reportID string) ([]string, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -481,6 +540,7 @@ func seedReportForTest(t *testing.T, application *fiber.App, reportType string, 
 	t.Helper()
 
 	registerResp := performReportsJSONRequest(t, application, http.MethodPost, "/api/v1/auth/register", map[string]string{
+		"username": "seeduserX",
 		"phone":    fmt.Sprintf("+91 90000 %05d", time.Now().UnixNano()%100000),
 		"password": "supersecret",
 	}, nil)

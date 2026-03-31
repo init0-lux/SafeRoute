@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -23,6 +22,7 @@ func TestRegisterSetsSessionCookiesAndAllowsMe(t *testing.T) {
 	application := newTestApp(t)
 
 	registerResp := performJSONRequest(t, application, http.MethodPost, "/api/v1/auth/register", map[string]string{
+		"username": "janedoe",
 		"phone":    "+91 99999 11111",
 		"email":    "person@example.com",
 		"password": "supersecret",
@@ -58,6 +58,7 @@ func TestLoginRejectsInvalidCredentials(t *testing.T) {
 	repo := newMemoryRepository()
 	service := auth.NewService(repo)
 	if _, err := service.Register(context.Background(), auth.RegisterInput{
+		Username: "testuser1",
 		Phone:    "+919999900000",
 		Password: "valid-password",
 	}); err != nil {
@@ -79,6 +80,7 @@ func TestRefreshReissuesSessionCookies(t *testing.T) {
 	application := newTestApp(t)
 
 	registerResp := performJSONRequest(t, application, http.MethodPost, "/api/v1/auth/register", map[string]string{
+		"username": "testuser2",
 		"phone":    "+919888877777",
 		"password": "supersecret",
 	}, nil)
@@ -104,6 +106,7 @@ func TestVerifyUserMiddlewareProtectsReusableRoute(t *testing.T) {
 	repo := newMemoryRepository()
 	service := auth.NewService(repo)
 	user, err := service.Register(context.Background(), auth.RegisterInput{
+		Username: "testuser3",
 		Phone:    "+919777766666",
 		Password: "supersecret",
 	})
@@ -250,12 +253,14 @@ type memoryRepository struct {
 	nextUserID int
 	byID       map[string]*auth.User
 	byPhone    map[string]*auth.User
+	byEmail    map[string]*auth.User
 }
 
 func newMemoryRepository() *memoryRepository {
 	return &memoryRepository{
 		byID:    make(map[string]*auth.User),
 		byPhone: make(map[string]*auth.User),
+		byEmail: make(map[string]*auth.User),
 	}
 }
 
@@ -272,6 +277,9 @@ func (r *memoryRepository) CreateUser(_ context.Context, user *auth.User) error 
 	copyUser.ID = fmt.Sprintf("user-%d", r.nextUserID)
 	r.byID[copyUser.ID] = &copyUser
 	r.byPhone[copyUser.Phone] = &copyUser
+	if user.Email != nil {
+		r.byEmail[*user.Email] = &copyUser
+	}
 	user.ID = copyUser.ID
 
 	return nil
@@ -281,7 +289,20 @@ func (r *memoryRepository) GetUserByPhone(_ context.Context, phone string) (*aut
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	user, exists := r.byPhone[strings.Join(strings.Fields(phone), "")]
+	user, exists := r.byPhone[phone]
+	if !exists {
+		return nil, auth.ErrUserNotFound
+	}
+
+	copyUser := *user
+	return &copyUser, nil
+}
+
+func (r *memoryRepository) GetUserByEmail(_ context.Context, email string) (*auth.User, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	user, exists := r.byEmail[email]
 	if !exists {
 		return nil, auth.ErrUserNotFound
 	}

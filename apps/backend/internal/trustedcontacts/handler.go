@@ -15,7 +15,6 @@ type Handler struct {
 }
 
 type createRequestPayload struct {
-	Name  string `json:"name"`
 	Phone string `json:"phone"`
 	Email string `json:"email"`
 }
@@ -57,6 +56,20 @@ type trustedContactBody struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
+// pendingRequestBody is for incoming requests to the current user
+type pendingRequestBody struct {
+	ID             string     `json:"id"`
+	RequesterID    string     `json:"requester_id"`
+	RequesterName  string     `json:"requester_name"`
+	RequesterPhone string     `json:"requester_phone"`
+	Name           string     `json:"name"`
+	Phone          string     `json:"phone"`
+	Status         string     `json:"status"`
+	ExpiresAt      time.Time  `json:"expires_at"`
+	CreatedAt      time.Time  `json:"created_at"`
+	AcceptToken    string     `json:"accept_token,omitempty"`
+}
+
 func NewHandler(service *Service, authMiddleware *auth.Middleware) *Handler {
 	return &Handler{
 		service: service,
@@ -66,9 +79,34 @@ func NewHandler(service *Service, authMiddleware *auth.Middleware) *Handler {
 
 func (h *Handler) RegisterRoutes(router fiber.Router) {
 	group := router.Group("/trusted-contacts")
+	group.Get("/", h.auth.VerifyUser(), h.listContacts)
 	group.Post("/requests", h.auth.VerifyUser(), h.createRequest)
-	group.Post("/requests/:id/accept", h.acceptRequest)
+	group.Get("/requests/pending", h.auth.VerifyUser(), h.listPendingRequests)
+	group.Get("/requests/outgoing", h.auth.VerifyUser(), h.listOutgoingRequests)
+	group.Post("/requests/:id/accept", h.auth.OptionalUser(), h.acceptRequest)
+	group.Post("/requests/:id/reject", h.auth.VerifyUser(), h.rejectRequest)
 	group.Delete("/:id", h.auth.VerifyUser(), h.deleteTrustedContact)
+}
+
+func (h *Handler) listContacts(c *fiber.Ctx) error {
+	user, ok := auth.CurrentUser(c)
+	if !ok {
+		return writeTrustedContactError(c, ErrUnauthorized)
+	}
+
+	contacts, err := h.service.ListTrustedContacts(c.UserContext(), user.ID)
+	if err != nil {
+		return writeTrustedContactError(c, err)
+	}
+
+	response := make([]trustedContactBody, len(contacts))
+	for i, contact := range contacts {
+		response[i] = newTrustedContactBody(&contact)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"contacts": response,
+	})
 }
 
 func (h *Handler) createRequest(c *fiber.Ctx) error {
@@ -85,7 +123,6 @@ func (h *Handler) createRequest(c *fiber.Ctx) error {
 	}
 
 	request, token, err := h.service.CreateRequest(c.UserContext(), user.ID, CreateRequestInput{
-		Name:  payload.Name,
 		Phone: payload.Phone,
 		Email: payload.Email,
 	})
@@ -100,6 +137,21 @@ func (h *Handler) createRequest(c *fiber.Ctx) error {
 }
 
 func (h *Handler) acceptRequest(c *fiber.Ctx) error {
+	// Try authenticated accept first (if user is logged in and it's their request)
+	if user, ok := auth.CurrentUser(c); ok {
+		request, contact, err := h.service.AcceptRequestByPhone(c.UserContext(), c.Params("id"), user.Phone)
+		if err == nil {
+			return c.Status(fiber.StatusCreated).JSON(trustedContactAcceptedResponse{
+				Request: newTrustedContactRequestBody(request),
+				Contact: newTrustedContactBody(contact),
+			})
+		}
+		// For authenticated users, return the error directly
+		// (ErrUnauthorized = not their request, other errors = request state issues)
+		return writeTrustedContactError(c, err)
+	}
+
+	// Token-based accept for unauthenticated users
 	var payload acceptRequestPayload
 	if err := c.BodyParser(&payload); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -120,6 +172,64 @@ func (h *Handler) acceptRequest(c *fiber.Ctx) error {
 	})
 }
 
+func (h *Handler) listPendingRequests(c *fiber.Ctx) error {
+	user, ok := auth.CurrentUser(c)
+	if !ok {
+		return writeTrustedContactError(c, ErrUnauthorized)
+	}
+
+	requests, err := h.service.ListPendingRequestsForUser(c.UserContext(), user.Phone)
+	if err != nil {
+		return writeTrustedContactError(c, err)
+	}
+
+	response := make([]pendingRequestBody, len(requests))
+	for i, req := range requests {
+		response[i] = newPendingRequestBody(&req)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"requests": response,
+	})
+}
+
+func (h *Handler) listOutgoingRequests(c *fiber.Ctx) error {
+	user, ok := auth.CurrentUser(c)
+	if !ok {
+		return writeTrustedContactError(c, ErrUnauthorized)
+	}
+
+	requests, err := h.service.ListOutgoingRequests(c.UserContext(), user.ID)
+	if err != nil {
+		return writeTrustedContactError(c, err)
+	}
+
+	response := make([]trustedContactRequestBody, len(requests))
+	for i, req := range requests {
+		response[i] = newTrustedContactRequestBody(&req)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"requests": response,
+	})
+}
+
+func (h *Handler) rejectRequest(c *fiber.Ctx) error {
+	user, ok := auth.CurrentUser(c)
+	if !ok {
+		return writeTrustedContactError(c, ErrUnauthorized)
+	}
+
+	request, err := h.service.RejectRequest(c.UserContext(), c.Params("id"), user.Phone)
+	if err != nil {
+		return writeTrustedContactError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"request": newTrustedContactRequestBody(request),
+	})
+}
+
 func (h *Handler) deleteTrustedContact(c *fiber.Ctx) error {
 	user, ok := auth.CurrentUser(c)
 	if !ok {
@@ -137,7 +247,7 @@ func (h *Handler) deleteTrustedContact(c *fiber.Ctx) error {
 
 func writeTrustedContactError(c *fiber.Ctx, err error) error {
 	switch {
-	case errors.Is(err, ErrInvalidContactName), errors.Is(err, ErrInvalidPhone), errors.Is(err, ErrInvalidRequestID), errors.Is(err, ErrInvalidRequestToken):
+	case errors.Is(err, ErrInvalidContactName), errors.Is(err, ErrInvalidPhone), errors.Is(err, ErrInvalidRequestID), errors.Is(err, ErrInvalidRequestToken), errors.Is(err, ErrContactNotRegistered):
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	case errors.Is(err, ErrUnauthorized):
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": err.Error()})
@@ -174,5 +284,24 @@ func newTrustedContactBody(contact *TrustedContact) trustedContactBody {
 		Email:      contact.Email,
 		AcceptedAt: contact.AcceptedAt,
 		CreatedAt:  contact.CreatedAt,
+	}
+}
+
+func newPendingRequestBody(request *TrustedContactRequest) pendingRequestBody {
+	requesterName := request.Name // fallback to target name if User not loaded
+	if request.User.Username != "" {
+		requesterName = request.User.Username
+	}
+	
+	return pendingRequestBody{
+		ID:             request.ID,
+		RequesterID:    request.UserID,
+		RequesterName:  requesterName,
+		RequesterPhone: "",            // We don't expose requester's phone for privacy
+		Name:           request.Name,  // Target user's username
+		Phone:          request.Phone, // Target user's phone
+		Status:         string(request.Status),
+		ExpiresAt:      request.ExpiresAt,
+		CreatedAt:      request.CreatedAt,
 	}
 }

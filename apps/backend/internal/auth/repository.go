@@ -11,6 +11,7 @@ import (
 type Repository interface {
 	CreateUser(ctx context.Context, user *User) error
 	GetUserByPhone(ctx context.Context, phone string) (*User, error)
+	GetUserByEmail(ctx context.Context, email string) (*User, error)
 	GetUserByID(ctx context.Context, id string) (*User, error)
 	UpdatePushToken(ctx context.Context, id string, token string) error
 }
@@ -39,6 +40,19 @@ func (r *GormRepository) CreateUser(ctx context.Context, user *User) error {
 func (r *GormRepository) GetUserByPhone(ctx context.Context, phone string) (*User, error) {
 	var user User
 	if err := r.db.WithContext(ctx).Where("phone = ?", phone).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (r *GormRepository) GetUserByEmail(ctx context.Context, email string) (*User, error) {
+	var user User
+	if err := r.db.WithContext(ctx).Where("email = ?", email).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
 		}

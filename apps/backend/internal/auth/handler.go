@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -15,17 +16,26 @@ type Handler struct {
 }
 
 type authRequest struct {
+	Username string `json:"username,omitempty"`
 	Phone    string `json:"phone"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
 type authResponse struct {
-	User userResponse `json:"user"`
+	User   userResponse   `json:"user"`
+	Tokens *tokenResponse `json:"tokens,omitempty"`
+}
+
+type tokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresIn    int64  `json:"expires_in"`
 }
 
 type userResponse struct {
 	ID         string  `json:"id"`
+	Username   string  `json:"username"`
 	Phone      string  `json:"phone"`
 	Email      *string `json:"email,omitempty"`
 	TrustScore float64 `json:"trust_score"`
@@ -85,6 +95,7 @@ func (h *Handler) register(c *fiber.Ctx) error {
 	}
 
 	user, err := h.service.Register(c.UserContext(), RegisterInput{
+		Username: req.Username,
 		Phone:    req.Phone,
 		Email:    req.Email,
 		Password: req.Password,
@@ -116,9 +127,13 @@ func (h *Handler) login(c *fiber.Ctx) error {
 }
 
 func (h *Handler) refresh(c *fiber.Ctx) error {
+	// Try cookie first, then fall back to X-Refresh-Token header.
 	refreshToken, err := h.sessions.RefreshTokenFromCookies(c)
 	if err != nil {
-		return writeAuthError(c, err)
+		refreshToken, err = h.sessions.RefreshTokenFromHeader(c)
+		if err != nil {
+			return writeAuthError(c, err)
+		}
 	}
 
 	claims, err := h.sessions.ParseRefreshToken(refreshToken)
@@ -167,8 +182,16 @@ func (h *Handler) signIn(c *fiber.Ctx, user *User, status int) error {
 
 	h.sessions.SetSessionCookies(c, pair)
 
+	// Include tokens in the response body so mobile clients can store them.
+	expiresIn := int64(pair.AccessExpiresAt.Sub(time.Now().UTC()).Seconds())
+
 	return c.Status(status).JSON(authResponse{
 		User: newUserResponse(user),
+		Tokens: &tokenResponse{
+			AccessToken:  pair.AccessToken,
+			RefreshToken: pair.RefreshToken,
+			ExpiresIn:    expiresIn,
+		},
 	})
 }
 
@@ -188,6 +211,7 @@ func writeAuthError(c *fiber.Ctx, err error) error {
 func newUserResponse(user *User) userResponse {
 	return userResponse{
 		ID:         user.ID,
+		Username:   user.Username,
 		Phone:      user.Phone,
 		Email:      user.Email,
 		TrustScore: user.TrustScore,

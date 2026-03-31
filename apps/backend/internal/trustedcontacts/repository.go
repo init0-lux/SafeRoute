@@ -15,6 +15,8 @@ type Repository interface {
 	GetActiveRequestByUserPhone(ctx context.Context, userID, phone string, now time.Time) (*TrustedContactRequest, error)
 	GetTrustedContactByUserPhone(ctx context.Context, userID, phone string) (*TrustedContact, error)
 	ListTrustedContactsByUserID(ctx context.Context, userID string) ([]TrustedContact, error)
+	ListPendingRequestsForPhone(ctx context.Context, phone string, now time.Time) ([]TrustedContactRequest, error)
+	ListOutgoingRequestsByUserID(ctx context.Context, userID string) ([]TrustedContactRequest, error)
 	CompleteRequestAcceptance(ctx context.Context, request *TrustedContactRequest, contact *TrustedContact) error
 	UpdateRequestState(ctx context.Context, requestID string, status RequestStatus, respondedAt *time.Time) error
 	DeleteTrustedContact(ctx context.Context, userID, contactID string) error
@@ -92,6 +94,31 @@ func (r *GormRepository) ListTrustedContactsByUserID(ctx context.Context, userID
 	}
 
 	return contacts, nil
+}
+
+func (r *GormRepository) ListPendingRequestsForPhone(ctx context.Context, phone string, now time.Time) ([]TrustedContactRequest, error) {
+	var requests []TrustedContactRequest
+	if err := r.db.WithContext(ctx).
+		Preload("User").
+		Where("phone = ? AND status = ? AND expires_at > ?", phone, RequestStatusPending, now).
+		Order("created_at DESC").
+		Find(&requests).Error; err != nil {
+		return nil, err
+	}
+
+	return requests, nil
+}
+
+func (r *GormRepository) ListOutgoingRequestsByUserID(ctx context.Context, userID string) ([]TrustedContactRequest, error) {
+	var requests []TrustedContactRequest
+	if err := r.db.WithContext(ctx).
+		Where("user_id = ? AND status = ?", userID, RequestStatusPending).
+		Order("created_at DESC").
+		Find(&requests).Error; err != nil {
+		return nil, err
+	}
+
+	return requests, nil
 }
 
 func (r *GormRepository) CompleteRequestAcceptance(ctx context.Context, request *TrustedContactRequest, contact *TrustedContact) error {

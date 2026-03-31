@@ -99,6 +99,28 @@ type NearbyReportsPage struct {
 	Offset  int
 }
 
+type ReportHistoryResult struct {
+	ID          string                 `json:"id"`
+	UserID      string                 `json:"user_id"`
+	Type        string                 `json:"type"`
+	Description *string                `json:"description"`
+	Latitude    float64                `json:"latitude"`
+	Longitude   float64                `json:"longitude"`
+	OccurredAt  time.Time              `json:"occurred_at"`
+	CreatedAt   time.Time              `json:"created_at"`
+	Status      string                 `json:"status"`
+	Events      []ComplaintEventResult `json:"events"`
+	EvidenceIDs []string               `json:"evidence_ids"`
+}
+
+type ComplaintEventResult struct {
+	ID        string    `json:"id"`
+	Status    string    `json:"status"`
+	Actor     string    `json:"actor"`
+	Note      *string   `json:"note"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 func NewService(repo Repository, cfg ServiceConfig, trust ReportTrustRecorder) *Service {
 	if cfg.DefaultNearbyLimit <= 0 {
 		cfg.DefaultNearbyLimit = 20
@@ -283,6 +305,49 @@ func (s *Service) ListNearby(ctx context.Context, input NearbyReportsInput) (*Ne
 		Limit:   limit,
 		Offset:  input.Offset,
 	}, nil
+}
+
+func (s *Service) ListUserHistory(ctx context.Context, userID string) ([]ReportHistoryResult, error) {
+	if strings.TrimSpace(userID) == "" {
+		return nil, ErrUnauthorizedReport
+	}
+
+	rows, err := s.repo.ListUserHistory(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]ReportHistoryResult, len(rows))
+	for i, row := range rows {
+		evidenceIDs, _ := s.repo.ListEvidenceIDs(ctx, row.ID)
+
+		events := make([]ComplaintEventResult, len(row.Events))
+		for j, ev := range row.Events {
+			events[j] = ComplaintEventResult{
+				ID:        ev.ID,
+				Status:    ev.Status,
+				Actor:     ev.Actor,
+				Note:      ev.Note,
+				CreatedAt: ev.CreatedAt,
+			}
+		}
+
+		results[i] = ReportHistoryResult{
+			ID:          row.ID,
+			UserID:      derefString(row.UserID),
+			Type:        row.Category,
+			Description: row.Description,
+			Latitude:    row.Latitude,
+			Longitude:   row.Longitude,
+			OccurredAt:  row.OccurredAt,
+			CreatedAt:   row.CreatedAt,
+			Status:      row.Status,
+			Events:      events,
+			EvidenceIDs: evidenceIDs,
+		}
+	}
+
+	return results, nil
 }
 
 func normalizeReportType(value string) string {
