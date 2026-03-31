@@ -51,6 +51,9 @@ type Evidence struct {
 	IPFSStatus   *string         `gorm:"column:ipfs_status;type:text"`
 	IPFSRequestedAt *time.Time   `gorm:"column:ipfs_requested_at;type:timestamptz"`
 	IPFSUploadedAt *time.Time    `gorm:"column:ipfs_uploaded_at;type:timestamptz"`
+	OnChainTx     *string        `gorm:"column:on_chain_tx;type:text"`
+	OnChainVerified bool         `gorm:"column:on_chain_verified;type:boolean;not null;default:false;index"`
+	OnChainVerifiedAt *time.Time `gorm:"column:on_chain_verified_at;type:timestamptz"`
 	SignedAt     *time.Time      `gorm:"column:signed_at;type:timestamptz"`
 	CreatedAt    time.Time       `gorm:"type:timestamptz;not null;default:now()"`
 }

@@ -38,11 +38,13 @@ type Service struct {
 	storage Storage
 	reports ReportLookup
 	sessions SessionLookup
+	dispatcher BlockchainDispatcher
 	cfg     ServiceConfig
 }
 
 type ServiceConfig struct {
-	MaxFileSizeBytes int64
+	MaxFileSizeBytes    int64
+	BlockchainDispatcher BlockchainDispatcher
 }
 
 type UploadInput struct {
@@ -65,12 +67,24 @@ type Metadata struct {
 	MediaType        string   `json:"media_type"`
 	SizeBytes        int64    `json:"size_bytes"`
 	OriginalFilename string   `json:"original_filename"`
+	OnChainTx        *string  `json:"on_chain_tx,omitempty"`
+	OnChainVerified  bool     `json:"on_chain_verified"`
+	OnChainVerifiedAt *time.Time `json:"on_chain_verified_at,omitempty"`
 	CreatedAt        time.Time `json:"created_at"`
 }
 
 type Download struct {
 	Metadata *Metadata
 	Reader   io.ReadCloser
+}
+
+type BlockchainEvidenceSubmission struct {
+	ReportID string
+	Hash     string
+}
+
+type BlockchainDispatcher interface {
+	QueueEvidence(ctx context.Context, submission BlockchainEvidenceSubmission) error
 }
 
 func NewService(repo Repository, storage Storage, reports ReportLookup, sessions SessionLookup, cfg ServiceConfig) *Service {
@@ -83,6 +97,7 @@ func NewService(repo Repository, storage Storage, reports ReportLookup, sessions
 		storage:  storage,
 		reports:  reports,
 		sessions: sessions,
+		dispatcher: cfg.BlockchainDispatcher,
 		cfg:      cfg,
 	}
 }
@@ -181,6 +196,15 @@ func (s *Service) Upload(ctx context.Context, input UploadInput, baseURL string)
 		return nil, err
 	}
 
+	if reportID != nil && s.dispatcher != nil {
+		if err := s.dispatcher.QueueEvidence(ctx, BlockchainEvidenceSubmission{
+			ReportID: *reportID,
+			Hash:     hash,
+		}); err != nil {
+			return nil, err
+		}
+	}
+
 	return s.toMetadata(record, baseURL), nil
 }
 
@@ -240,6 +264,9 @@ func (s *Service) toMetadata(record *StoredEvidence, baseURL string) *Metadata {
 		MediaType:        record.MediaType,
 		SizeBytes:        record.SizeBytes,
 		OriginalFilename: record.OriginalFilename,
+		OnChainTx:        record.OnChainTx,
+		OnChainVerified:  record.OnChainVerified,
+		OnChainVerifiedAt: record.OnChainVerifiedAt,
 		CreatedAt:        record.CreatedAt,
 	}
 }

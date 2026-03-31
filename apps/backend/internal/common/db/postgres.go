@@ -143,9 +143,13 @@ func EnsureSchemaArtifacts(db *gorm.DB) error {
 		END
 		$$`,
 		"ALTER TABLE evidence DROP COLUMN IF EXISTS client_encrypted",
+		"ALTER TABLE evidence ADD COLUMN IF NOT EXISTS on_chain_tx text",
+		"ALTER TABLE evidence ADD COLUMN IF NOT EXISTS on_chain_verified boolean NOT NULL DEFAULT false",
+		"ALTER TABLE evidence ADD COLUMN IF NOT EXISTS on_chain_verified_at timestamptz",
 		"CREATE INDEX IF NOT EXISTS evidence_report_idx ON evidence (report_id, created_at DESC)",
 		"CREATE INDEX IF NOT EXISTS evidence_session_idx ON evidence (session_id, created_at DESC)",
 		"CREATE INDEX IF NOT EXISTS evidence_user_created_idx ON evidence (user_id, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS evidence_report_on_chain_idx ON evidence (report_id, on_chain_verified, created_at DESC)",
 		"ALTER TABLE trusted_contacts ADD COLUMN IF NOT EXISTS request_id uuid",
 		"ALTER TABLE trusted_contacts ADD COLUMN IF NOT EXISTS accepted_at timestamptz NOT NULL DEFAULT now()",
 		"ALTER TABLE trusted_contact_requests ADD COLUMN IF NOT EXISTS accepted_contact_id uuid",

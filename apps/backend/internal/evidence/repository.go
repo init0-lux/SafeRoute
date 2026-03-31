@@ -31,6 +31,9 @@ type StoredEvidence struct {
 	MediaType        string
 	SizeBytes        int64
 	OriginalFilename string
+	OnChainTx        *string
+	OnChainVerified  bool
+	OnChainVerifiedAt *time.Time
 	CreatedAt        time.Time
 }
 
@@ -85,6 +88,9 @@ func (r *GormRepository) GetByID(ctx context.Context, id string) (*StoredEvidenc
 		MediaType:        model.MediaType,
 		SizeBytes:        derefInt64(model.SizeBytes),
 		OriginalFilename: derefString(model.OriginalFilename),
+		OnChainTx:        model.OnChainTx,
+		OnChainVerified:  model.OnChainVerified,
+		OnChainVerifiedAt: model.OnChainVerifiedAt,
 		CreatedAt:        model.CreatedAt,
 	}, nil
 }

@@ -1,6 +1,6 @@
 .PHONY: dev run test tidy infra-up infra-down infra-logs infra-init-postgis schema-sync
+.PHONY: soroban-setup soroban-build soroban-deploy
 
-dev:
 	air -c .air.toml
 
 run:
@@ -26,3 +26,19 @@ infra-init-postgis:
 
 schema-sync:
 	go run ./cmd/schema-sync
+
+# configure testnet and generate and fund relayer keypair
+soroban-setup:
+	docker run --rm --entrypoint sh -v $(CURDIR)/../contracts:/workspace -w /workspace stellar/stellar-cli:latest \
+		-c "network add --global testnet --rpc-url https://soroban-testnet.stellar.org --network-passphrase 'Test SDF Network ; September 2015' && \
+		keys generate --global backend-relayer --network testnet --fund"
+
+# compile the rust smart contract to WASM
+soroban-build:
+	docker run --rm -v $(CURDIR)/../contracts:/workspace -w /workspace rust:1.85.1 \
+		sh -c "rustup target add wasm32-unknown-unknown && cargo build --locked --target wasm32-unknown-unknown --release"
+
+# deploy the built WASM contract to the testnet
+soroban-deploy:
+	docker run --rm -v $(CURDIR)/../contracts:/workspace -w /workspace stellar/stellar-cli:latest \
+		contract deploy --wasm target/wasm32-unknown-unknown/release/saferoute_contract.wasm --source backend-relayer --network testnet -- --relayer backend-relayer
