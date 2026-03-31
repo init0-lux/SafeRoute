@@ -11,6 +11,7 @@ SafeRoute is a modern, trust-weighted safety layer for urban mobility. By combin
 1. **Instant Safety (SOS Layer)**: Immediate escalation to trusted contacts with live streaming (location, audio, images) adaptive to network strength.
 2. **Trustworthy Reporting (Evidence Layer)**: Anonymous, verifiable, and tamper-resistant incident reports built with encrypted endpoints.
 3. **Risk-Aware Navigation (Intelligence Layer)**: Dynamic safety scoring leveraging nearby incident density, crowd proxies, temporal risk models, and user trust weightings.
+4. **Immutable Chain of Custody**: Cryptographically secure evidence timestamping on the Stellar Blockchain to guarantee admissibility without compromising privacy.
 
 ---
 
@@ -23,41 +24,44 @@ This is a monorepo setup consisting of:
 - **Framework**: Fiber (Fast HTTP web framework)
 - **ORM**: GORM
 - **Database**: PostgreSQL + **PostGIS** for high-performance geospatial queries (`geography` geometries).
-- **Workers**: Custom background job manager for stale file cleanup and async operations.
+- **Workers**: Custom background job manager linking to the Stellar Blockchain.
 - **Tooling**: Make, Docker Compose, Air (Live reload).
 
 ### Frontend
-- **Framework**: React Native with **Expo** framework for rapid iOS/Android and Web deployment.
+- **Framework**: React Native with **Expo** framework for rapid iOS/Android deployment.
 
-### Blockchain
-- **Soroban**: Smart contract written in rust and deployed successfully on the testnet
-- **Contract Address**: CAD455XRGDJRHQNBCPU2M33XABQHYP3KEBU4MK6DZQ3VEGTYGLCZSMMR
+### Blockchain (Soroban)
+- **Engine**: Rust-based Smart Contract running on the Stellar network.
+- **Status**: Live on Testnet.
+- **Contract Address**: `CAD455XRGDJRHQNBCPU2M33XABQHYP3KEBU4MK6DZQ3VEGTYGLCZSMMR`
+
 ---
 
 ## 🚀 Current Implementation Status
 
-The SafeRoute **backend core MVP** is feature-complete and test-covered.
-
 ### 📍 Reports Module
 - **Endpoints**: Create, retrieve by ID, and list nearby reports.
-- **Geospatial Processing**: Fully integrated PostGIS `POINT` system (`geography(POINT,4326)`).
-- **Features**: Allowlisted incident categories, trust-weighted query sorting, strict pagination, and dynamic radius bounds filtering.
+- **Geospatial Processing**: PostGIS `POINT` bounds filtering (`geography(POINT,4326)`).
 
 ### 🛡️ Trust Module
-- **Endpoints**: User trust profile, verification checks.
-- **Engine**: Dynamic reputation calculator mapping account age, report corroborations, device consistency, and active verifications to a single dynamic variable.
+- **Engine**: Dynamic reputation calculator mapping account age, report corroborations, and device consistency to a single dynamic variable.
 
-### 🔒 Evidence Module
-- **Endpoints**: Secure multipart uploads, metadata fetch, content download.
-- **Integrity**: Enforced server-side SHA-256 evidence hashing upon stream reception. 
-- **Validation**: Strict size limit and MIME-type allowlist enforcement via sniffed bytes. Local disk development storage, cleanly abstracted for S3/MinIO/IPFS.
+### 🔒 Evidence Module & Blockchain Relayer 
+- **Integrity Integration**: Upon stream reception, the backend calculates a server-side `SHA-256` hash.
+- **Zero-Web3 UX**: The backend utilizes an automated **Relayer Wallet** to pay gas fees and submit the `<ReportID>` and `<EvidenceHash>` to the Soroban Smart Contract. Users do not need wallets or crypto.
+- **Local Indexer**: A Go worker polls the Stellar Blockchain for confirmation events and updates the DB to show a "Verified on Chain" status natively in the app.
 
 ### 🗺️ Safety Intelligence Module
-- **Endpoints**: Geographic Point Safety Score, Route-based Safety Score.
-- **Engine**: Fully explainable scoring layer output. Calculations ingest:
-  - Trust-weighted historic + recent incident points.
-  - Adjustable configurable Time-of-Day risk offsets.
-- **Navigation**: Abstracted Provider Map Integration (e.g., Google Routes). Evaluates "corridor-based" route segments overlaying incident hotspots to find the safest (instead of merely fastest) routing.
+- **Engine**: Fully explainable scoring layer output utilizing trust-weighted historic points and Time-of-Day offsets.
+- **Navigation**: Abstracted Provider Map Integration (e.g., Google Routes) overlaid with our incident hotspots.
+
+---
+
+## ⚖️ Compliance & Data Security (India)
+
+SafeRoute operates on a strictly "needs to know" basis and complies heavily with Indian legal standards:
+- **BNS/BSA 2023 (Evidentiary Standards)**: End-to-end evidence chains. Media files retain their on-chain hashes to act as a cryptographically secure digital receipt, ensuring they are admissible in court.
+- **DPDP Act (Right to be Forgotten)**: Private media objects are kept entirely off-chain in localized cloud buckets. Since *only* the `SHA-256` hash lives on the public ledger, deleting the cloud file immediately renders the immutable on-chain hash an undecipherable orphan, fully satisfying digital privacy laws without breaking the blockchain.
 
 ---
 
@@ -82,11 +86,21 @@ make schema-sync
 make run
 ```
 
-### 2. Verify with Postman
-A pre-configured workspace collection is included at the repository root:  
-`SafeRoute_Postman_Collection.json`. 
+### 2. Blockchain Setup (Deterministic Sandbox)
+You do not need to install Rust or the Stellar CLI locally. We use Dockerized make targets for full determinism.
 
-Run queries sequentially: `Health` → `Auth / Register` → `Reports` / `Safety` to populate the PostGIS tables and observe index interactions in real-time.
+```bash
+cd apps/backend
+
+# Configures the testnet and safely generates + funds your local relayer keypair
+make soroban-setup
+
+# Compiles the Rust smart contract into a WASM binary
+make soroban-build
+
+# Deploys the built WASM array to the Testnet
+make soroban-deploy
+```
 
 ### 3. Start the Frontend App
 ```bash
@@ -98,11 +112,3 @@ pnpm install
 # Start the Expo bundler
 pnpm expo start
 ```
-
----
-
-## 🔒 Security & Privacy Principles
-SafeRoute operates on a strictly "needs to know" basis:
-- **End-to-end evidence chains**: Media retains backend hashes linking straight to reports ensuring integrity check guarantees.
-- **No loose IDs**: Trust scoring functions operate using heuristics that preserve privacy, eschewing required physical IDs.
-- **Bounded Geospatial Fetching**: Nearby queries execute via `ST_DWithin` ensuring tight bounded data constraints avoiding excessive scrapable exposures.
