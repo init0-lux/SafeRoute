@@ -274,6 +274,19 @@ func (r *memoryTrustAuthRepository) GetUserByID(_ context.Context, id string) (*
 	return &copyUser, nil
 }
 
+func (r *memoryTrustAuthRepository) UpdatePushToken(_ context.Context, id string, token string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	user, exists := r.byID[id]
+	if !exists {
+		return auth.ErrUserNotFound
+	}
+
+	user.ExpoPushToken = &token
+	return nil
+}
+
 func (r *memoryTrustAuthRepository) GetByUserID(ctx context.Context, id string) (*auth.User, error) {
 	return r.GetUserByID(ctx, id)
 }

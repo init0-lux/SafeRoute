@@ -29,12 +29,14 @@ func main() {
 		[]string{
 			"users",
 			"trusted_contacts",
+			"trusted_contact_requests",
 			"user_verifications",
 			"reports",
 			"evidence",
 			"complaint_events",
 			"sos_sessions",
 			"location_pings",
+			"sos_viewer_grants",
 		},
 	)
 }

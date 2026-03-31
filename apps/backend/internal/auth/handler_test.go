@@ -246,10 +246,10 @@ func decodeBody(t *testing.T, resp *http.Response) map[string]any {
 }
 
 type memoryRepository struct {
-	mu      sync.Mutex
-	nextID  int
-	byID    map[string]*auth.User
-	byPhone map[string]*auth.User
+	mu         sync.Mutex
+	nextUserID int
+	byID       map[string]*auth.User
+	byPhone    map[string]*auth.User
 }
 
 func newMemoryRepository() *memoryRepository {
@@ -267,9 +267,9 @@ func (r *memoryRepository) CreateUser(_ context.Context, user *auth.User) error 
 		return auth.ErrUserAlreadyExists
 	}
 
-	r.nextID++
+	r.nextUserID++
 	copyUser := *user
-	copyUser.ID = fmt.Sprintf("user-%d", r.nextID)
+	copyUser.ID = fmt.Sprintf("user-%d", r.nextUserID)
 	r.byID[copyUser.ID] = &copyUser
 	r.byPhone[copyUser.Phone] = &copyUser
 	user.ID = copyUser.ID
@@ -301,4 +301,17 @@ func (r *memoryRepository) GetUserByID(_ context.Context, id string) (*auth.User
 
 	copyUser := *user
 	return &copyUser, nil
+}
+
+func (r *memoryRepository) UpdatePushToken(_ context.Context, id string, token string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	user, exists := r.byID[id]
+	if !exists {
+		return auth.ErrUserNotFound
+	}
+
+	user.ExpoPushToken = &token
+	return nil
 }

@@ -19,33 +19,8 @@
 					"path": [
 						"health"
 					]
-				},
-				"description": "Check the health status of the backend service."
-			},
-			"response": [
-				{
-					"name": "Health OK",
-					"originalRequest": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/health",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"health"
-							]
-						}
-					},
-					"status": "OK",
-					"code": 200,
-					"_postman_previewlanguage": "json",
-					"header": [],
-					"cookie": [],
-					"body": "{\n    \"status\": \"ok\",\n    \"service\": \"SafeRoute Backend\",\n    \"environment\": \"development\"\n}"
 				}
-			]
+			}
 		},
 		{
 			"name": "Auth",
@@ -73,20 +48,8 @@
 								"auth",
 								"register"
 							]
-						},
-						"description": "Register a new user account. Sets HTTP-only session cookies upon success."
-					},
-					"response": [
-						{
-							"name": "Registration Success",
-							"status": "Created",
-							"code": 201,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"user\": {\n        \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"phone\": \"+919876543210\",\n        \"email\": \"user@example.com\",\n        \"trust_score\": 0.3,\n        \"verified\": false\n    }\n}"
 						}
-					]
+					}
 				},
 				{
 					"name": "Login",
@@ -111,23 +74,11 @@
 								"auth",
 								"login"
 							]
-						},
-						"description": "Authenticate a user and receive session cookies."
-					},
-					"response": [
-						{
-							"name": "Login Success",
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"user\": {\n        \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"phone\": \"+919876543210\",\n        \"email\": \"user@example.com\",\n        \"trust_score\": 0.3,\n        \"verified\": false\n    }\n}"
 						}
-					]
+					}
 				},
 				{
-					"name": "Get Current User (Me)",
+					"name": "Get Me",
 					"request": {
 						"method": "GET",
 						"header": [],
@@ -140,49 +91,35 @@
 								"auth",
 								"me"
 							]
-						},
-						"description": "Retrieve profile information for the currently authenticated user. Requires valid session cookies."
-					},
-					"response": [
-						{
-							"name": "Success",
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"user\": {\n        \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"phone\": \"+919876543210\",\n        \"email\": \"user@example.com\",\n        \"trust_score\": 0.3,\n        \"verified\": false\n    }\n}"
 						}
-					]
+					}
 				},
 				{
-					"name": "Refresh Token",
+					"name": "Update Push Token",
 					"request": {
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"token\": \"ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]\"\n}"
+						},
 						"url": {
-							"raw": "{{base_url}}/auth/refresh",
+							"raw": "{{base_url}}/auth/push-token",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"auth",
-								"refresh"
+								"push-token"
 							]
 						},
-						"description": "Refresh the access token using the refresh cookie."
-					},
-					"response": [
-						{
-							"name": "Refresh Success",
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"user\": {\n        \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"phone\": \"+919876543210\",\n        \"email\": \"user@example.com\",\n        \"trust_score\": 0.3,\n        \"verified\": false\n    }\n}"
-						}
-					]
+						"description": "Register the Expo Push Token for the current user to receive SOS alerts."
+					}
 				},
 				{
 					"name": "Logout",
@@ -198,20 +135,187 @@
 								"auth",
 								"logout"
 							]
-						},
-						"description": "Clear authentication cookies and end the session."
-					},
-					"response": [
-						{
-							"name": "Logout Success",
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"status\": \"logged_out\"\n}"
 						}
-					]
+					}
+				}
+			]
+		},
+		{
+			"name": "Trusted Contacts",
+			"item": [
+				{
+					"name": "Create Request",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"John Doe\",\n    \"phone\": \"+919998887776\",\n    \"email\": \"john@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/trusted-contacts/requests",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"trusted-contacts",
+								"requests"
+							]
+						}
+					}
+				},
+				{
+					"name": "Accept Request",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"token\": \"invite-token-from-previous-step\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/trusted-contacts/requests/:id/accept",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"trusted-contacts",
+								"requests",
+								"request-uuid",
+								"accept"
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Contact",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/trusted-contacts/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"trusted-contacts",
+								"contact-uuid"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "SOS",
+			"item": [
+				{
+					"name": "Start SOS Session",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/sos/start",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"sos",
+								"start"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Session",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/sos/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"sos",
+								"session-uuid"
+							]
+						}
+					}
+				},
+				{
+					"name": "End Session",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/sos/:id/end",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"sos",
+								"session-uuid",
+								"end"
+							]
+						}
+					}
+				},
+				{
+					"name": "Reporter Stream (WebSocket)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "ws://localhost:8080/api/v1/sos/:id/stream",
+							"protocol": "ws",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"v1",
+								"sos",
+								"session-uuid",
+								"stream"
+							]
+						}
+					}
+				},
+				{
+					"name": "Viewer Stream (SSE)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/sos/viewer/stream?token=viewer-token",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"sos",
+								"viewer",
+								"stream"
+							],
+							"query": [
+								{
+									"key": "token",
+									"value": "viewer-token"
+								}
+							]
+						}
+					}
 				}
 			]
 		},

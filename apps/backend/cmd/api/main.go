@@ -12,10 +12,12 @@ import (
 	"saferoute-backend/internal/auth"
 	dbconn "saferoute-backend/internal/common/db"
 	"saferoute-backend/internal/evidence"
+	"saferoute-backend/internal/notify"
 	"saferoute-backend/internal/reports"
 	"saferoute-backend/internal/safety"
 	"saferoute-backend/internal/sos"
 	"saferoute-backend/internal/trust"
+	"saferoute-backend/internal/trustedcontacts"
 	"saferoute-backend/internal/workers"
 )
 
@@ -60,16 +62,16 @@ func main() {
 	authService := auth.NewService(auth.NewRepository(database))
 	authHandler := auth.NewHandler(authService, sessionManager)
 	authMiddleware := auth.NewMiddleware(authService, sessionManager)
+	sosRepo := sos.NewRepository(database)
+	trustedContactsRepo := trustedcontacts.NewRepository(database)
+
 	trustService := trust.NewService(trust.NewRepository(database))
 	reportsService := reports.NewService(reports.NewRepository(database), reports.ServiceConfig{
 		DefaultNearbyLimit: cfg.ReportsNearbyDefaultLimit,
 		MaxNearbyLimit:     cfg.ReportsNearbyMaxLimit,
 		MaxNearbyRadiusM:   cfg.ReportsNearbyMaxRadiusM,
 	}, trustService)
-	reportsHandler := reports.NewHandler(
-		reportsService,
-		authMiddleware.VerifyUser(),
-	)
+	reportsHandler := reports.NewHandler(reportsService, authMiddleware.VerifyUser())
 	trustHandler := trust.NewHandler(trustService, authMiddleware.VerifyUser())
 	safetyHandler := safety.NewHandler(
 		safety.NewService(
@@ -102,20 +104,75 @@ func main() {
 			evidence.NewRepository(database),
 			evidence.NewLocalStorage(cfg.EvidenceStorageRoot),
 			reportsService,
-			sos.NewRepository(database),
+			sosRepo,
 			evidence.ServiceConfig{
 				MaxFileSizeBytes: cfg.MaxEvidenceSizeBytes,
 			},
 		),
 		authMiddleware.VerifyUser(),
 	)
+
+	var notificationSender notify.Sender
+	if cfg.Environment == "production" {
+		slog.Info("initializing Expo Push notification sender")
+		notificationSender = notify.NewExpoPushSender()
+	} else {
+		slog.Info("initializing Dev notification sender (logging only)")
+		notificationSender = notify.NewDevSender(slog.Default())
+	}
+
+	trustedContactsService := trustedcontacts.NewService(trustedContactsRepo)
+	trustedContactsHandler := trustedcontacts.NewHandler(
+		trustedContactsService,
+		authMiddleware,
+	)
+
+	sosService := sos.NewService(sosRepo)
+	sosService.SetNotifyTrustedContactsFunc(func(ctx context.Context, session *sos.SOSSession) error {
+		if session == nil || session.UserID == nil {
+			return nil
+		}
+
+		slog.Info("triggering notifications for SOS session", "session_id", session.ID, "user_id", *session.UserID)
+
+		summary, err := sosService.NotifyTrustedContacts(
+			ctx,
+			trustedContactsService,
+			notificationSender,
+			session,
+			cfg.SOSViewerBaseURL,
+		)
+		if err != nil {
+			slog.Error("failed to notify trusted contacts", "error", err, "session_id", session.ID)
+			return nil
+		}
+
+		slog.Info(
+			"notifications sent",
+			"session_id", summary.SessionID,
+			"successful", summary.Successful,
+			"failed", summary.Failed,
+		)
+		return nil
+	})
+	sosHandler := sos.NewHandler(sosService, authMiddleware)
+
 	workerManager := workers.NewManager(
 		workers.NewCleanupJob(cfg.EvidenceStorageRoot, cfg.WorkerCleanupInterval, cfg.WorkerCleanupMaxAge),
 		workers.NewSafetyCacheJob(nil, cfg.WorkerSafetyRefreshInterval),
 		workers.NewIPFSUploadJob(nil, cfg.WorkerIPFSPollInterval),
 	)
 
-	server := app.New(cfg, authHandler.RegisterRoutes, reportsHandler.RegisterRoutes, trustHandler.RegisterRoutes, safetyHandler.RegisterRoutes, evidenceHandler.RegisterRoutes)
+	server := app.New(
+		cfg,
+		authHandler.RegisterRoutes,
+		reportsHandler.RegisterRoutes,
+		trustHandler.RegisterRoutes,
+		safetyHandler.RegisterRoutes,
+		evidenceHandler.RegisterRoutes,
+		trustedContactsHandler.RegisterRoutes,
+		sosHandler.RegisterRoutes,
+	)
 	addr := cfg.Address()
 
 	workerManager.Start(appCtx)

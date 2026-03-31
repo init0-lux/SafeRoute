@@ -17,8 +17,8 @@ import (
 	"saferoute-backend/internal/auth"
 	"saferoute-backend/internal/reports"
 
-	"github.com/google/uuid"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 )
 
 func TestCreateReportRequiresAuthentication(t *testing.T) {
@@ -357,6 +357,19 @@ func (r *memoryAuthRepository) GetUserByID(_ context.Context, id string) (*auth.
 
 	copyUser := *user
 	return &copyUser, nil
+}
+
+func (r *memoryAuthRepository) UpdatePushToken(_ context.Context, id string, token string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	user, exists := r.byID[id]
+	if !exists {
+		return auth.ErrUserNotFound
+	}
+
+	user.ExpoPushToken = &token
+	return nil
 }
 
 type memoryReportsRepository struct {

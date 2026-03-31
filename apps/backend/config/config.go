@@ -25,6 +25,7 @@ type Config struct {
 	AuthCookieDomain               string
 	AuthCookieSameSite             string
 	AuthCookieSecure               bool
+	SOSViewerBaseURL               string
 	EvidenceStorageRoot            string
 	MaxEvidenceSizeBytes           int64
 	ReportsNearbyDefaultLimit      int
@@ -53,8 +54,6 @@ type Config struct {
 
 // Load returns runtime config using environment variables with local defaults.
 func Load() Config {
-	// Attempt to load .env file from the current directory.
-	// We ignore error as .env might not exist in some environments (e.g. production)
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, relying on environment variables.")
 	}
@@ -75,6 +74,7 @@ func Load() Config {
 		AuthCookieDomain:               getEnv("AUTH_COOKIE_DOMAIN", ""),
 		AuthCookieSameSite:             getEnv("AUTH_COOKIE_SAME_SITE", "Lax"),
 		AuthCookieSecure:               getBoolEnv("AUTH_COOKIE_SECURE", environment == "production"),
+		SOSViewerBaseURL:               getEnv("SOS_VIEWER_BASE_URL", "http://localhost:8080/api/v1/sos/viewer/stream"),
 		EvidenceStorageRoot:            getEnv("EVIDENCE_STORAGE_ROOT", "/tmp/saferoute-evidence"),
 		MaxEvidenceSizeBytes:           getInt64Env("MAX_EVIDENCE_SIZE_BYTES", 10485760),
 		ReportsNearbyDefaultLimit:      getIntEnv("REPORTS_NEARBY_DEFAULT_LIMIT", 20),

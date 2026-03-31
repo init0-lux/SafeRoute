@@ -20,8 +20,8 @@ import (
 	"saferoute-backend/internal/evidence"
 	"saferoute-backend/internal/reports"
 
-	"github.com/google/uuid"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 )
 
 const (
@@ -335,7 +335,6 @@ func pngFixture() []byte {
 	}
 }
 
-
 func findEvidenceCookie(t *testing.T, resp *http.Response, name string) *http.Cookie {
 	t.Helper()
 
@@ -412,6 +411,19 @@ func (r *memoryEvidenceAuthRepository) GetUserByPhone(_ context.Context, phone s
 
 	copyUser := *user
 	return &copyUser, nil
+}
+
+func (r *memoryEvidenceAuthRepository) UpdatePushToken(_ context.Context, id string, token string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	user, exists := r.byID[id]
+	if !exists {
+		return auth.ErrUserNotFound
+	}
+
+	user.ExpoPushToken = &token
+	return nil
 }
 
 type memoryEvidenceRepository struct {
