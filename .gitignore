@@ -27,3 +27,4 @@ bin/
 .codex
 apps/backend/tmp/
 apps/contracts/target/
+apps/contracts/test_snapshots/
