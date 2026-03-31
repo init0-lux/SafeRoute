@@ -4,6 +4,14 @@
   "version": "0.0.0",
   "packageManager": "pnpm@10.30.3",
   "scripts": {
-    "backend:dev": "make -C apps/backend dev"
+    "backend:dev": "make -C apps/backend dev",
+    "frontend:dev": "pnpm --filter frontend run start",
+    "frontend:android": "pnpm --filter frontend run android",
+    "frontend:ios": "pnpm --filter frontend run ios",
+    "frontend:web": "pnpm --filter frontend run web",
+    "dev": "concurrently -c \"cyan,magenta\" \"pnpm run backend:dev\" \"pnpm run frontend:dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }
