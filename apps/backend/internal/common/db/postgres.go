@@ -43,7 +43,7 @@ func EnsureCustomTypes(db *gorm.DB) error {
 		`DO $$
 		BEGIN
 			IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'trusted_contact_request_status') THEN
-				CREATE TYPE trusted_contact_request_status AS ENUM ('pending', 'accepted', 'cancelled', 'expired');
+				CREATE TYPE trusted_contact_request_status AS ENUM ('pending', 'accepted', 'rejected', 'cancelled', 'expired');
 			END IF;
 		END
 		$$`,
@@ -54,6 +54,10 @@ func EnsureCustomTypes(db *gorm.DB) error {
 			return err
 		}
 	}
+
+	// ALTER TYPE ADD VALUE cannot run in a transaction/DO block, so run separately
+	// This will silently succeed if the value already exists (IF NOT EXISTS)
+	db.Exec("ALTER TYPE trusted_contact_request_status ADD VALUE IF NOT EXISTS 'rejected'")
 
 	return nil
 }

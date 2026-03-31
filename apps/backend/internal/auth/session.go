@@ -129,6 +129,34 @@ func (m *SessionManager) RefreshTokenFromCookies(c *fiber.Ctx) (string, error) {
 	return token, nil
 }
 
+func (m *SessionManager) AccessTokenFromHeader(c *fiber.Ctx) (string, error) {
+	auth := c.Get("Authorization")
+	if auth == "" {
+		return "", ErrUnauthorized
+	}
+
+	const prefix = "Bearer "
+	if len(auth) < len(prefix) || !strings.EqualFold(auth[:len(prefix)], prefix) {
+		return "", ErrUnauthorized
+	}
+
+	token := strings.TrimSpace(auth[len(prefix):])
+	if token == "" {
+		return "", ErrUnauthorized
+	}
+
+	return token, nil
+}
+
+func (m *SessionManager) RefreshTokenFromHeader(c *fiber.Ctx) (string, error) {
+	token := strings.TrimSpace(c.Get("X-Refresh-Token"))
+	if token == "" {
+		return "", ErrUnauthorized
+	}
+
+	return token, nil
+}
+
 func (m *SessionManager) issueToken(user User, tokenType string, ttl time.Duration, secret []byte) (string, time.Time, error) {
 	now := time.Now().UTC()
 	expiresAt := now.Add(ttl)

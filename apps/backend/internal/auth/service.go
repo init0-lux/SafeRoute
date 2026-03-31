@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"strings"
+
+	"github.com/nyaruka/phonenumbers"
 )
 
 type Service struct {
@@ -11,6 +13,7 @@ type Service struct {
 }
 
 type RegisterInput struct {
+	Username string
 	Phone    string
 	Email    string
 	Password string
@@ -26,6 +29,11 @@ func NewService(repo Repository) *Service {
 }
 
 func (s *Service) Register(ctx context.Context, input RegisterInput) (*User, error) {
+	username := strings.ToLower(strings.TrimSpace(input.Username))
+	if username == "" {
+		return nil, errors.New("username is required")
+	}
+
 	phone := normalizePhone(input.Phone)
 	if phone == "" {
 		return nil, ErrInvalidPhone
@@ -37,6 +45,7 @@ func (s *Service) Register(ctx context.Context, input RegisterInput) (*User, err
 	}
 
 	user := &User{
+		Username:     username,
 		Phone:        phone,
 		PasswordHash: passwordHash,
 	}
@@ -95,7 +104,16 @@ func (s *Service) UpdatePushToken(ctx context.Context, userID, token string) err
 }
 
 func normalizePhone(phone string) string {
-	return strings.Join(strings.Fields(phone), "")
+	num, err := phonenumbers.Parse(phone, "IN") // default to India if no code provided
+	if err != nil {
+		return ""
+	}
+
+	if !phonenumbers.IsValidNumber(num) {
+		return ""
+	}
+
+	return phonenumbers.Format(num, phonenumbers.E164)
 }
 
 func normalizeEmail(email string) string {

@@ -98,7 +98,7 @@ func Load() Config {
 		SafetyTimeRiskMorningEndHour:   getIntEnv("SAFETY_TIME_RISK_MORNING_END_HOUR", 7),
 		SafetyTimeRiskEveningStartHour: getIntEnv("SAFETY_TIME_RISK_EVENING_START_HOUR", 20),
 		SafetyTimeRiskEveningEndHour:   getIntEnv("SAFETY_TIME_RISK_EVENING_END_HOUR", 22),
-		GoogleRoutesAPIKey:             getEnv("GOOGLE_ROUTES_API_KEY", ""),
+		GoogleRoutesAPIKey:             getEnv("GOOGLE_ROUTES_API_KEY", "hehe"),
 		GoogleRoutesBaseURL:            getEnv("GOOGLE_ROUTES_BASE_URL", "https://routes.googleapis.com/directions/v2:computeRoutes"),
 		SafetyRouteCorridorRadiusM:     getFloatEnv("SAFETY_ROUTE_CORRIDOR_RADIUS_METERS", 75),
 		SafetyRouteSegmentLengthM:      getFloatEnv("SAFETY_ROUTE_SEGMENT_LENGTH_METERS", 150),

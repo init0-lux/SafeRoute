@@ -97,18 +97,29 @@ func TestTrustedContactRequestRejectsInvalidAcceptToken(t *testing.T) {
 		t.Fatalf("expected invalid token status 400, got %d", acceptResp.StatusCode)
 	}
 }
-
 func newTrustedContactsApp(t *testing.T) (*fiber.App, *http.Cookie) {
 	t.Helper()
 
 	authRepo := newMemoryAuthRepository()
 	authService := auth.NewService(authRepo)
 	user, err := authService.Register(context.Background(), auth.RegisterInput{
+		Username: "trustedtest",
 		Phone:    "+919999911111",
 		Password: "supersecret",
 	})
 	if err != nil {
 		t.Fatalf("failed to seed auth user: %v", err)
+	}
+
+	// Seed the helper user so validation passes
+	_, err = authService.Register(context.Background(), auth.RegisterInput{
+		Username: "helper",
+		Phone:    "+918888822222",
+		Email:    "helper@example.com",
+		Password: "supersecret",
+	})
+	if err != nil {
+		t.Fatalf("failed to seed helper user: %v", err)
 	}
 
 	sessionManager, err := auth.NewSessionManager(auth.SessionConfig{
@@ -130,7 +141,7 @@ func newTrustedContactsApp(t *testing.T) (*fiber.App, *http.Cookie) {
 	}
 
 	authMiddleware := auth.NewMiddleware(authService, sessionManager)
-	handler := trustedcontacts.NewHandler(trustedcontacts.NewService(newMemoryRepository()), authMiddleware)
+	handler := trustedcontacts.NewHandler(trustedcontacts.NewService(newMemoryRepository(), authRepo), authMiddleware)
 	application := appcore.New(config.Config{
 		AppName:     "SafeRoute Backend",
 		Environment: "test",
@@ -188,12 +199,14 @@ type memoryAuthRepository struct {
 	nextID  int
 	byID    map[string]*auth.User
 	byPhone map[string]*auth.User
+	byEmail map[string]*auth.User
 }
 
 func newMemoryAuthRepository() *memoryAuthRepository {
 	return &memoryAuthRepository{
 		byID:    make(map[string]*auth.User),
 		byPhone: make(map[string]*auth.User),
+		byEmail: make(map[string]*auth.User),
 	}
 }
 
@@ -210,6 +223,9 @@ func (r *memoryAuthRepository) CreateUser(_ context.Context, user *auth.User) er
 	copyUser.ID = fmt.Sprintf("user-%d", r.nextID)
 	r.byID[copyUser.ID] = &copyUser
 	r.byPhone[copyUser.Phone] = &copyUser
+	if user.Email != nil {
+		r.byEmail[*user.Email] = &copyUser
+	}
 	user.ID = copyUser.ID
 
 	return nil
@@ -220,6 +236,19 @@ func (r *memoryAuthRepository) GetUserByPhone(_ context.Context, phone string) (
 	defer r.mu.Unlock()
 
 	user, exists := r.byPhone[strings.Join(strings.Fields(phone), "")]
+	if !exists {
+		return nil, auth.ErrUserNotFound
+	}
+
+	copyUser := *user
+	return &copyUser, nil
+}
+
+func (r *memoryAuthRepository) GetUserByEmail(_ context.Context, email string) (*auth.User, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	user, exists := r.byEmail[email]
 	if !exists {
 		return nil, auth.ErrUserNotFound
 	}

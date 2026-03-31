@@ -2,6 +2,7 @@ package sos
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -96,6 +97,21 @@ func (s *Service) NotifyTrustedContacts(
 			TrustedContactID: contact.ID,
 		})
 		if err != nil {
+			// If grant already exists, try to get it instead of failing
+			if errors.Is(err, ErrViewerGrantConflict) {
+				// Try to get the existing active grant
+				existingGrant, getErr := s.repo.GetActiveViewerGrantBySessionContact(ctx, session.ID, contact.ID, time.Now().UTC())
+				if getErr == nil && existingGrant != nil {
+					// Reuse existing grant - skip creating notification as they were already notified
+					summary.Results = append(summary.Results, NotificationFanoutResult{
+						ContactID: contact.ID,
+						Status:    "skipped",
+						Message:   "viewer grant already exists",
+					})
+					continue
+				}
+			}
+			
 			summary.Results = append(summary.Results, NotificationFanoutResult{
 				ContactID: contact.ID,
 				Status:    "failed",
