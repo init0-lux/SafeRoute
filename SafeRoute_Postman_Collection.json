@@ -63,8 +63,12 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/health",
-              "host": ["{{baseUrl}}"],
-              "path": ["health"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
             },
             "description": "Returns server health status including service name and environment."
           },
@@ -118,8 +122,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/register",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "register"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
             },
             "description": "Create a new user account. Username and phone are required. Phone must be in E.164 format."
           },
@@ -168,8 +177,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
             },
             "description": "Authenticate user with phone and password. Returns JWT tokens."
           },
@@ -204,8 +218,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/refresh",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "refresh"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
             },
             "description": "Refresh authentication tokens using the refresh token."
           },
@@ -223,8 +242,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/me",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "me"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
             },
             "description": "Retrieve the authenticated user's profile."
           },
@@ -250,8 +274,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/push-token",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "push-token"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "push-token"
+              ]
             },
             "description": "Register Expo Push notification token for the current user."
           },
@@ -269,8 +298,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/logout",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "logout"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
             },
             "description": "Clear session cookies and log out user."
           },
@@ -317,8 +351,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/reports",
-              "host": ["{{baseUrl}}"],
-              "path": ["reports"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports"
+              ]
             },
             "description": "Create a new incident report. Report types include: theft, assault, harassment, suspicious_activity, etc."
           },
@@ -331,8 +369,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/reports/{{report_id}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["reports", "{{report_id}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "{{report_id}}"
+              ]
             },
             "description": "Retrieve a specific report by ID. Public endpoint."
           },
@@ -345,8 +388,12 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/reports?lat=28.6139&lng=77.2090&radius=5000&limit=20&offset=0",
-              "host": ["{{baseUrl}}"],
-              "path": ["reports"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports"
+              ],
               "query": [
                 {
                   "key": "lat",
@@ -391,8 +438,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/reports/me",
-              "host": ["{{baseUrl}}"],
-              "path": ["reports", "me"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "me"
+              ]
             },
             "description": "Retrieve all reports created by the authenticated user with complaint status and events."
           },
@@ -415,8 +467,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/trust/me",
-              "host": ["{{baseUrl}}"],
-              "path": ["trust", "me"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "trust",
+                "me"
+              ]
             },
             "description": "Retrieve the authenticated user's trust score with breakdown."
           },
@@ -449,8 +506,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/trust/verify",
-              "host": ["{{baseUrl}}"],
-              "path": ["trust", "verify"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "trust",
+                "verify"
+              ]
             },
             "description": "Set verification status for authenticated user. Verified users get a trust score bonus."
           },
@@ -513,8 +575,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/evidence/upload",
-              "host": ["{{baseUrl}}"],
-              "path": ["evidence", "upload"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "evidence",
+                "upload"
+              ]
             },
             "description": "Upload image or audio evidence linked to a report or SOS session. Max file size: 10MB."
           },
@@ -532,8 +599,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/evidence/{{evidence_id}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["evidence", "{{evidence_id}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "evidence",
+                "{{evidence_id}}"
+              ]
             },
             "description": "Retrieve metadata for a specific evidence file."
           },
@@ -551,8 +623,14 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/evidence/{{evidence_id}}/content",
-              "host": ["{{baseUrl}}"],
-              "path": ["evidence", "{{evidence_id}}", "content"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "evidence",
+                "{{evidence_id}}",
+                "content"
+              ]
             },
             "description": "Download the raw evidence file (image/audio)."
           },
@@ -570,8 +648,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/safety/score?lat=28.6139&lng=77.2090&radius=500",
-              "host": ["{{baseUrl}}"],
-              "path": ["safety", "score"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "safety",
+                "score"
+              ],
               "query": [
                 {
                   "key": "lat",
@@ -617,8 +700,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/safety/route-score",
-              "host": ["{{baseUrl}}"],
-              "path": ["safety", "route-score"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "safety",
+                "route-score"
+              ]
             },
             "description": "Calculate a segmented safety score for a route. Supported travel modes: walking, transit."
           },
@@ -657,8 +745,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/sos/start",
-              "host": ["{{baseUrl}}"],
-              "path": ["sos", "start"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sos",
+                "start"
+              ]
             },
             "description": "Start a new SOS emergency session. Notifies trusted contacts automatically."
           },
@@ -676,8 +769,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/sos/{{session_id}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["sos", "{{session_id}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sos",
+                "{{session_id}}"
+              ]
             },
             "description": "Retrieve details of a specific SOS session."
           },
@@ -703,8 +801,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/sos/{{session_id}}/ping",
-              "host": ["{{baseUrl}}"],
-              "path": ["sos", "{{session_id}}", "ping"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sos",
+                "{{session_id}}",
+                "ping"
+              ]
             },
             "description": "Record a location update during an active SOS session. Timestamp is optional."
           },
@@ -730,8 +834,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/sos/{{session_id}}/viewers",
-              "host": ["{{baseUrl}}"],
-              "path": ["sos", "{{session_id}}", "viewers"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sos",
+                "{{session_id}}",
+                "viewers"
+              ]
             },
             "description": "Create a viewing access token for a trusted contact to view the SOS stream."
           },
@@ -749,8 +859,14 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/sos/{{session_id}}/end",
-              "host": ["{{baseUrl}}"],
-              "path": ["sos", "{{session_id}}", "end"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sos",
+                "{{session_id}}",
+                "end"
+              ]
             },
             "description": "End an active SOS session."
           },
@@ -768,8 +884,14 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/sos/{{session_id}}/stream",
-              "host": ["{{baseUrl}}"],
-              "path": ["sos", "{{session_id}}", "stream"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sos",
+                "{{session_id}}",
+                "stream"
+              ]
             },
             "description": "WebSocket endpoint for the SOS reporter to stream real-time location updates. Send JSON: {\"lat\": float, \"lng\": float, \"ts\": string}"
           },
@@ -782,8 +904,14 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/sos/viewer/stream?token=viewer-token-here",
-              "host": ["{{baseUrl}}"],
-              "path": ["sos", "viewer", "stream"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sos",
+                "viewer",
+                "stream"
+              ],
               "query": [
                 {
                   "key": "token",
@@ -813,8 +941,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/trusted-contacts/",
-              "host": ["{{baseUrl}}"],
-              "path": ["trusted-contacts", ""]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "trusted-contacts",
+                ""
+              ]
             },
             "description": "Retrieve all accepted trusted contacts for the authenticated user."
           },
@@ -856,10 +989,91 @@
             },
             "url": {
               "raw": "{{baseUrl}}/trusted-contacts/requests",
-              "host": ["{{baseUrl}}"],
-              "path": ["trusted-contacts", "requests"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "trusted-contacts",
+                "requests"
+              ]
             },
             "description": "Send a trusted contact invitation. The contact must be registered on the platform."
+          },
+          "response": []
+        },
+        {
+          "name": "List Pending Requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/trusted-contacts/requests/pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "trusted-contacts",
+                "requests",
+                "pending"
+              ]
+            },
+            "description": "List pending trust requests sent to the current user (for them to accept/reject)."
+          },
+          "response": []
+        },
+        {
+          "name": "List Outgoing Requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/trusted-contacts/requests/outgoing",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "trusted-contacts",
+                "requests",
+                "outgoing"
+              ]
+            },
+            "description": "List outgoing trust requests created by the current user."
+          },
+          "response": []
+        },
+        {
+          "name": "Reject Trust Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/trusted-contacts/requests/{{request_id}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "trusted-contacts",
+                "requests",
+                "{{request_id}}",
+                "reject"
+              ]
+            },
+            "description": "Reject a trust request. Only the target user can reject."
           },
           "response": []
         },
@@ -895,8 +1109,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/trusted-contacts/requests/{{request_id}}/accept",
-              "host": ["{{baseUrl}}"],
-              "path": ["trusted-contacts", "requests", "{{request_id}}", "accept"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "trusted-contacts",
+                "requests",
+                "{{request_id}}",
+                "accept"
+              ]
             },
             "description": "Accept a trusted contact invitation using the accept token. Does not require authentication."
           },
@@ -914,8 +1135,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/trusted-contacts/{{contact_id}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["trusted-contacts", "{{contact_id}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "trusted-contacts",
+                "{{contact_id}}"
+              ]
             },
             "description": "Remove a trusted contact relationship."
           },

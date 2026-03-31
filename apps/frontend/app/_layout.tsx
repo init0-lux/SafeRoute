@@ -1,10 +1,30 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import {
+  registerForPushNotifications,
+  updatePushToken,
+} from '@/services/notifications';
+import { useSOSNotifications } from '@/hooks/useSOSNotifications';
 
 function RootNavigator() {
-  const { isLoading } = useAuth();
+  const { isLoading, isAuthenticated } = useAuth();
+  const { activeAlerts, hasUnseenAlerts } = useSOSNotifications();
+
+  // Register for push notifications when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      registerForPushNotifications().then((token) => {
+        if (token) {
+          updatePushToken(token).catch((err) => {
+            console.error('Failed to register push token:', err);
+          });
+        }
+      });
+    }
+  }, [isAuthenticated]);
 
   if (isLoading) {
     return (

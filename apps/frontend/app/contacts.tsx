@@ -33,7 +33,6 @@ export default function ContactsScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [isAddMode, setIsAddMode] = useState(false);
     
-    const [newName, setNewName] = useState('');
     const [newPhone, setNewPhone] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -53,11 +52,10 @@ export default function ContactsScreen() {
     };
 
     const handleAddContact = async () => {
-        const trimmedName = newName.trim();
         const trimmedPhone = newPhone.trim();
 
-        if (!trimmedName || !trimmedPhone) {
-            Alert.alert('Validation', 'Please fill out both name and phone number.');
+        if (!trimmedPhone) {
+            Alert.alert('Validation', 'Please enter a phone number.');
             return;
         }
 
@@ -71,15 +69,13 @@ export default function ContactsScreen() {
         setIsSubmitting(true);
         try {
             await createTrustedContactRequest({
-                name: trimmedName,
                 phone: trimmedPhone,
             });
             
             Alert.alert(
                 'Request Sent',
-                `A trust request has been sent to ${trimmedName}. They will need to accept it to become your trusted contact.`
+                `A trust request has been sent to ${trimmedPhone}. They will need to accept it to become your trusted contact.`
             );
-            setNewName('');
             setNewPhone('');
             setIsAddMode(false);
             fetchData();
@@ -92,14 +88,10 @@ export default function ContactsScreen() {
     };
 
     const handleAcceptRequest = async (request: PendingTrustRequest) => {
-        if (!request.accept_token) {
-            Alert.alert('Error', 'Missing accept token');
-            return;
-        }
-
         try {
-            await acceptTrustedContactRequest(request.id, request.accept_token);
-            Alert.alert('Accepted', `${request.requester_name || 'Contact'} is now your trusted contact!`);
+            // Authenticated users can accept directly without the token
+            await acceptTrustedContactRequest(request.id);
+            Alert.alert('Accepted', `${request.requester_name || request.name || 'Contact'} is now your trusted contact!`);
             fetchData();
         } catch (err: any) {
             Alert.alert('Error', err?.message || 'Failed to accept request');
@@ -243,15 +235,8 @@ export default function ContactsScreen() {
                 <View style={styles.addForm}>
                     <Text style={styles.formTitle}>Send Trust Request</Text>
                     <Text style={styles.formSubtitle}>
-                        The contact will receive a notification to accept your request.
+                        Enter the phone number of a registered SafeRoute user.
                     </Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Contact Name (e.g., Mom)"
-                        placeholderTextColor={Colors.gray}
-                        value={newName}
-                        onChangeText={setNewName}
-                    />
                     <TextInput
                         style={styles.input}
                         placeholder="Phone Number (+91...)"

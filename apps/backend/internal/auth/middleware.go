@@ -48,6 +48,36 @@ func (m *Middleware) VerifyUser() fiber.Handler {
 	}
 }
 
+// OptionalUser tries to authenticate the user but doesn't fail if no auth is present
+func (m *Middleware) OptionalUser() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// Try cookie first, then fall back to Authorization: Bearer header.
+		accessToken, err := m.sessions.AccessTokenFromCookies(c)
+		if err != nil {
+			accessToken, err = m.sessions.AccessTokenFromHeader(c)
+			if err != nil {
+				// No auth present, continue without user
+				return c.Next()
+			}
+		}
+
+		claims, err := m.sessions.ParseAccessToken(accessToken)
+		if err != nil {
+			// Invalid token, continue without user
+			return c.Next()
+		}
+
+		user, err := m.service.GetUserByID(c.UserContext(), claims.Subject)
+		if err == nil {
+			// Valid user, set in context
+			c.Locals(currentUserKey, user)
+		}
+
+		// Continue regardless of user status
+		return c.Next()
+	}
+}
+
 func CurrentUser(c *fiber.Ctx) (*User, bool) {
 	user, ok := c.Locals(currentUserKey).(*User)
 	if !ok || user == nil {

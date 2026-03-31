@@ -186,8 +186,8 @@ export async function connectToSOSReporterStream(
     throw new Error('Not authenticated');
   }
 
-  // Convert http(s) to ws(s)
-  const wsUrl = API_BASE_URL.replace(/^http/, 'ws') + `/sos/${sessionId}/stream`;
+  // Convert http(s) to ws(s) and add token as query param (since WS doesn't support headers easily)
+  const wsUrl = API_BASE_URL.replace(/^http/, 'ws') + `/sos/${sessionId}/stream?token=${encodeURIComponent(token)}`;
   
   let ws: WebSocket | null = null;
   let isClosed = false;
@@ -195,11 +195,7 @@ export async function connectToSOSReporterStream(
   const connect = () => {
     if (isClosed) return;
 
-    ws = new WebSocket(wsUrl, undefined, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
       console.log('[SOS Reporter] WebSocket connected');

@@ -99,6 +99,7 @@ func (r *GormRepository) ListTrustedContactsByUserID(ctx context.Context, userID
 func (r *GormRepository) ListPendingRequestsForPhone(ctx context.Context, phone string, now time.Time) ([]TrustedContactRequest, error) {
 	var requests []TrustedContactRequest
 	if err := r.db.WithContext(ctx).
+		Preload("User").
 		Where("phone = ? AND status = ? AND expires_at > ?", phone, RequestStatusPending, now).
 		Order("created_at DESC").
 		Find(&requests).Error; err != nil {

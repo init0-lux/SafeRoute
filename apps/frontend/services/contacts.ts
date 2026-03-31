@@ -81,19 +81,19 @@ export async function getOutgoingRequests(): Promise<PendingTrustRequest[]> {
 }
 
 export async function createTrustedContactRequest(
-  payload: { name: string; phone: string; email?: string }
+  payload: { phone: string; email?: string }
 ): Promise<CreateRequestResponse> {
   return post<CreateRequestResponse>('/trusted-contacts/requests', payload);
 }
 
 export async function acceptTrustedContactRequest(
   requestId: string,
-  token: string
+  token?: string
 ): Promise<AcceptRequestResponse> {
+  // If authenticated, we can accept without the token (backend will verify by phone)
   return post<AcceptRequestResponse>(
     `/trusted-contacts/requests/${requestId}/accept`,
-    { token },
-    { skipAuth: true }
+    token ? { token } : {}
   );
 }
 

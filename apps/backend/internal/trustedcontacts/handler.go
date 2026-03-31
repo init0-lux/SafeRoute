@@ -15,7 +15,6 @@ type Handler struct {
 }
 
 type createRequestPayload struct {
-	Name  string `json:"name"`
 	Phone string `json:"phone"`
 	Email string `json:"email"`
 }
@@ -84,7 +83,7 @@ func (h *Handler) RegisterRoutes(router fiber.Router) {
 	group.Post("/requests", h.auth.VerifyUser(), h.createRequest)
 	group.Get("/requests/pending", h.auth.VerifyUser(), h.listPendingRequests)
 	group.Get("/requests/outgoing", h.auth.VerifyUser(), h.listOutgoingRequests)
-	group.Post("/requests/:id/accept", h.acceptRequest)
+	group.Post("/requests/:id/accept", h.auth.OptionalUser(), h.acceptRequest)
 	group.Post("/requests/:id/reject", h.auth.VerifyUser(), h.rejectRequest)
 	group.Delete("/:id", h.auth.VerifyUser(), h.deleteTrustedContact)
 }
@@ -124,7 +123,6 @@ func (h *Handler) createRequest(c *fiber.Ctx) error {
 	}
 
 	request, token, err := h.service.CreateRequest(c.UserContext(), user.ID, CreateRequestInput{
-		Name:  payload.Name,
 		Phone: payload.Phone,
 		Email: payload.Email,
 	})
@@ -139,6 +137,21 @@ func (h *Handler) createRequest(c *fiber.Ctx) error {
 }
 
 func (h *Handler) acceptRequest(c *fiber.Ctx) error {
+	// Try authenticated accept first (if user is logged in and it's their request)
+	if user, ok := auth.CurrentUser(c); ok {
+		request, contact, err := h.service.AcceptRequestByPhone(c.UserContext(), c.Params("id"), user.Phone)
+		if err == nil {
+			return c.Status(fiber.StatusCreated).JSON(trustedContactAcceptedResponse{
+				Request: newTrustedContactRequestBody(request),
+				Contact: newTrustedContactBody(contact),
+			})
+		}
+		// For authenticated users, return the error directly
+		// (ErrUnauthorized = not their request, other errors = request state issues)
+		return writeTrustedContactError(c, err)
+	}
+
+	// Token-based accept for unauthenticated users
 	var payload acceptRequestPayload
 	if err := c.BodyParser(&payload); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -275,13 +288,18 @@ func newTrustedContactBody(contact *TrustedContact) trustedContactBody {
 }
 
 func newPendingRequestBody(request *TrustedContactRequest) pendingRequestBody {
+	requesterName := request.Name // fallback to target name if User not loaded
+	if request.User.Username != "" {
+		requesterName = request.User.Username
+	}
+	
 	return pendingRequestBody{
 		ID:             request.ID,
 		RequesterID:    request.UserID,
-		RequesterName:  request.Name,  // The name they gave for the contact
+		RequesterName:  requesterName,
 		RequesterPhone: "",            // We don't expose requester's phone for privacy
-		Name:           request.Name,
-		Phone:          request.Phone,
+		Name:           request.Name,  // Target user's username
+		Phone:          request.Phone, // Target user's phone
 		Status:         string(request.Status),
 		ExpiresAt:      request.ExpiresAt,
 		CreatedAt:      request.CreatedAt,
