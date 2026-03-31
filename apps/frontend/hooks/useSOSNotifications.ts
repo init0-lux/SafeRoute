@@ -20,8 +20,8 @@ interface ActiveSOSAlert {
 export function useSOSNotifications() {
   const [activeAlerts, setActiveAlerts] = useState<ActiveSOSAlert[]>([]);
   const [hasUnseenAlerts, setHasUnseenAlerts] = useState(false);
-  const notificationListener = useRef<Notifications.Subscription>();
-  const responseListener = useRef<Notifications.Subscription>();
+  const notificationListener = useRef<Notifications.Subscription | null>(null);
+  const responseListener = useRef<Notifications.Subscription | null>(null);
   const appState = useRef(AppState.currentState);
 
   // Handle incoming notification while app is in foreground
