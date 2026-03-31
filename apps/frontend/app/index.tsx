@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import OnboardingSlide from '@/components/OnboardingSlide';
 import PaginationDots from '@/components/PaginationDots';
 import { Colors, Spacing } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -75,10 +76,19 @@ const slides = [
 ];
 
 export default function OnboardingScreen() {
+  const { isAuthenticated } = useAuth();
   const [activeIndex, setActiveIndex] = useState(0);
   const [loopCount, setLoopCount] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  const navigateAfterOnboarding = useCallback(() => {
+    if (isAuthenticated) {
+      router.replace('/home' as any);
+    } else {
+      router.replace('/login' as any);
+    }
+  }, [isAuthenticated]);
 
   const goToNext = useCallback(() => {
     const nextIndex = (activeIndex + 1) % slides.length;
@@ -87,7 +97,7 @@ export default function OnboardingScreen() {
       const newLoopCount = loopCount + 1;
       setLoopCount(newLoopCount);
       if (newLoopCount >= 2) {
-        router.replace('/home' as any);
+        navigateAfterOnboarding();
         return;
       }
     }
@@ -116,7 +126,7 @@ export default function OnboardingScreen() {
   }, [goToNext]);
 
   const handleSkip = () => {
-    router.replace('/home' as any);
+    navigateAfterOnboarding();
   };
 
   return (

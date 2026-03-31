@@ -20,9 +20,13 @@ func NewMiddleware(service *Service, sessions *SessionManager) *Middleware {
 
 func (m *Middleware) VerifyUser() fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		// Try cookie first, then fall back to Authorization: Bearer header.
 		accessToken, err := m.sessions.AccessTokenFromCookies(c)
 		if err != nil {
-			return writeAuthError(c, err)
+			accessToken, err = m.sessions.AccessTokenFromHeader(c)
+			if err != nil {
+				return writeAuthError(c, err)
+			}
 		}
 
 		claims, err := m.sessions.ParseAccessToken(accessToken)

@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -21,7 +22,14 @@ type authRequest struct {
 }
 
 type authResponse struct {
-	User userResponse `json:"user"`
+	User   userResponse   `json:"user"`
+	Tokens *tokenResponse `json:"tokens,omitempty"`
+}
+
+type tokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresIn    int64  `json:"expires_in"`
 }
 
 type userResponse struct {
@@ -116,9 +124,13 @@ func (h *Handler) login(c *fiber.Ctx) error {
 }
 
 func (h *Handler) refresh(c *fiber.Ctx) error {
+	// Try cookie first, then fall back to X-Refresh-Token header.
 	refreshToken, err := h.sessions.RefreshTokenFromCookies(c)
 	if err != nil {
-		return writeAuthError(c, err)
+		refreshToken, err = h.sessions.RefreshTokenFromHeader(c)
+		if err != nil {
+			return writeAuthError(c, err)
+		}
 	}
 
 	claims, err := h.sessions.ParseRefreshToken(refreshToken)
@@ -167,8 +179,16 @@ func (h *Handler) signIn(c *fiber.Ctx, user *User, status int) error {
 
 	h.sessions.SetSessionCookies(c, pair)
 
+	// Include tokens in the response body so mobile clients can store them.
+	expiresIn := int64(pair.AccessExpiresAt.Sub(time.Now().UTC()).Seconds())
+
 	return c.Status(status).JSON(authResponse{
 		User: newUserResponse(user),
+		Tokens: &tokenResponse{
+			AccessToken:  pair.AccessToken,
+			RefreshToken: pair.RefreshToken,
+			ExpiresIn:    expiresIn,
+		},
 	})
 }
 

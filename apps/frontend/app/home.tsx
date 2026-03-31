@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, BorderRadius, FontSizes } from '@/constants/theme';
 import SearchInput from '@/components/SearchInput';
 import BottomNavBar from '@/components/BottomNavBar';
+import { useAuth } from '@/context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -24,6 +25,7 @@ try {
 }
 
 export default function HomeScreen() {
+    const { user, logout } = useAuth();
     const [destination, setDestination] = useState('');
     const [mapError, setMapError] = useState(false);
     const [activeTab, setActiveTab] = useState("home");
@@ -50,9 +52,20 @@ export default function HomeScreen() {
                         <Ionicons name="person" size={24} color={Colors.gray} />
                     </View>
                     <View style={styles.greeting}>
-                        <Text style={styles.greetingName}>hello, user</Text>
+                        <Text style={styles.greetingName}>
+                            hello, {user?.phone ?? 'user'}
+                        </Text>
                         <Text style={styles.greetingSub}>let us help you find the safest route</Text>
                     </View>
+                    <TouchableOpacity
+                        onPress={async () => {
+                            await logout();
+                            router.replace('/login' as never);
+                        }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                        <Ionicons name="log-out-outline" size={22} color={Colors.grayLight} />
+                    </TouchableOpacity>
                 </View>
 
                 {/* Search destination */}
