@@ -1,42 +1,103 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     TouchableOpacity,
     ScrollView,
-    Dimensions,
+    TextInput,
+    Alert,
+    Dimensions
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, BorderRadius, FontSizes } from '@/constants/theme';
-import SearchInput from '@/components/SearchInput';
 import BottomNavBar from '@/components/BottomNavBar';
 import { useAuth } from '@/context/AuthContext';
+import { IncidentType, INCIDENT_TYPES_MAP } from '@/constants/config';
+import IncidentTypeSelector from '@/components/IncidentTypeSelector';
+import { createReport } from '@/services/reports';
+import * as Location from 'expo-location';
 
 const { width } = Dimensions.get('window');
 
-// Try to import MapView gracefully
-let MapView: React.ComponentType<any> | null = null;
-try {
-    MapView = require('react-native-maps').default;
-} catch {
-    MapView = null;
-}
-
 export default function HomeScreen() {
     const { user, logout } = useAuth();
-    const [destination, setDestination] = useState('');
-    const [mapError, setMapError] = useState(false);
     const [activeTab, setActiveTab] = useState("home");
 
+    // Report Form State
+    const [selectedTypes, setSelectedTypes] = useState<IncidentType[]>([]);
+    const [selectorVisible, setSelectorVisible] = useState(false);
+    const [description, setDescription] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [location, setLocation] = useState<Location.LocationObject | null>(null);
+    const [locationLoading, setLocationLoading] = useState(true);
+
+    useEffect(() => {
+        (async () => {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                setLocationLoading(false);
+                return;
+            }
+            const currLocation = await Location.getCurrentPositionAsync({});
+            setLocation(currLocation);
+            setLocationLoading(false);
+        })();
+    }, []);
+
     const onTabPress = (tab: string) => {
-        setActiveTab(tab);
+        if (tab === 'sos') {
+            router.push('/sos' as any);
+        } else if (tab === 'location') {
+            router.push('/maps' as any);
+        } else if (tab === 'history') {
+            router.push('/history' as any);
+        } else {
+            setActiveTab(tab);
+        }
     };
 
+    const handleToggleType = (type: IncidentType) => {
+        setSelectedTypes((prev) =>
+            prev.includes(type)
+                ? prev.filter((t) => t !== type)
+                : [...prev, type]
+        );
+    };
 
-    const handleShareLocation = () => {
-        router.push('/maps' as any);
+    const handleSubmitReport = async () => {
+        if (selectedTypes.length === 0) {
+            Alert.alert('Required', 'Please select an incident type');
+            return;
+        }
+
+        if (!location) {
+            Alert.alert('Location Required', 'Please wait for your location to be determined.');
+            return;
+        }
+
+        const lat = location.coords.latitude;
+        const lng = location.coords.longitude;
+
+        const apiType = INCIDENT_TYPES_MAP[selectedTypes[0]] || selectedTypes[0];
+
+        setIsSubmitting(true);
+        try {
+            await createReport({
+                type: apiType,
+                description: description.trim(),
+                lat,
+                lng,
+            });
+            Alert.alert('Report Submitted', 'Your report has been securely logged.');
+            setSelectedTypes([]);
+            setDescription('');
+        } catch (err) {
+            Alert.alert('Submission Failed', 'Failed to submit report. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -46,136 +107,146 @@ export default function HomeScreen() {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                {/* Header: user greeting */}
+                {/* Top Header */}
                 <View style={styles.header}>
-                    <View style={styles.avatar}>
-                        <Ionicons name="person" size={24} color={Colors.gray} />
-                    </View>
-                    <View style={styles.greeting}>
-                        <Text style={styles.greetingName}>
-                            hello, {user?.username ?? 'user'}
-                        </Text>
-                        <Text style={styles.greetingSub}>let us help you find the safest route</Text>
-                    </View>
-                    <TouchableOpacity
-                        onPress={async () => {
-                            await logout();
-                            router.replace('/login' as never);
-                        }}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                        <Ionicons name="log-out-outline" size={22} color={Colors.grayLight} />
-                    </TouchableOpacity>
-                </View>
-
-                {/* Search destination */}
-                <View style={styles.searchContainer}>
-                    <SearchInput
-                        placeholder="enter your destination"
-                        value={destination}
-                        onChangeText={setDestination}
-                    />
-                </View>
-
-                {/* Map preview card */}
-                <View style={styles.mapCard}>
-                    {MapView && !mapError ? (
-                        <View style={styles.mapWrapper}>
-                            <MapView
-                                style={styles.mapPreview}
-                                initialRegion={{
-                                    latitude: 33.5186,
-                                    longitude: -86.8104,
-                                    latitudeDelta: 0.03,
-                                    longitudeDelta: 0.03,
-                                }}
-                                onError={() => setMapError(true)}
-                                scrollEnabled={false}
-                                zoomEnabled={false}
-                                customMapStyle={darkMapStyle}
-                            />
-                            {/* YOU marker */}
-                            <View style={styles.youMarker}>
-                                <Text style={styles.youText}>YOU</Text>
-                                <View style={styles.youDot} />
-                            </View>
+                    <View style={styles.headerLeft}>
+                        <View style={styles.avatar}>
+                            <Ionicons name="person" size={24} color={Colors.bgDark} />
                         </View>
-                    ) : (
-                        <View style={styles.mapFallback}>
-                            <Ionicons name="map-outline" size={40} color={Colors.gray} />
-                            <Text style={styles.mapFallbackText}>
-                                {mapError ? 'Map could not be loaded' : 'Maps not available'}
+                        <View style={styles.greeting}>
+                            <Text style={styles.greetingName}>
+                                hello, {user?.username ?? 'user'}
                             </Text>
-                            <Text style={styles.mapFallbackSub}>
-                                App continues to work without maps
-                            </Text>
+                            <Text style={styles.greetingSub}>let us help you find the safest route</Text>
                         </View>
-                    )}
-
-                    {/* Share location button */}
-                    <TouchableOpacity
-                        style={styles.shareButton}
-                        onPress={handleShareLocation}
-                        activeOpacity={0.85}
-                    >
-                        <Text style={styles.shareText}>share location</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Report Incident section - folder style */}
-                <View style={styles.reportSection}>
-                    <View style={styles.reportCard}>
-                        <Text style={styles.reportTitle}>Report The Incident Here</Text>
-
-                        {/* Nature of incident */}
+                    </View>
+                    <View style={styles.headerRight}>
                         <TouchableOpacity
-                            style={styles.inputField}
-                            onPress={() => router.push('/report' as any)}
-                            activeOpacity={0.7}
+                            onPress={() => router.push('/contacts' as any)}
+                            style={styles.headerIcon}
                         >
-                            <Text style={styles.inputPlaceholder}>
-                                Nature of incident<Text style={styles.required}>*</Text>
-                            </Text>
-                            <Ionicons name="chevron-down" size={18} color={Colors.gray} />
+                            <Ionicons name="people-outline" size={24} color={Colors.white} />
                         </TouchableOpacity>
-
-                        {/* Details */}
-                        <View style={styles.detailsField}>
-                            <Text style={styles.inputPlaceholder}>
-                                provide details here<Text style={styles.required}>*</Text>
-                            </Text>
-                        </View>
-
-                        {/* Upload evidence */}
-                        <TouchableOpacity style={styles.uploadField} activeOpacity={0.7}>
-                            <Text style={styles.uploadPlaceholder}>upload evidence</Text>
-                            <Ionicons name="cloud-upload-outline" size={18} color={Colors.gray} />
+                        <TouchableOpacity
+                            onPress={async () => {
+                                await logout();
+                                router.replace('/login' as never);
+                            }}
+                            style={styles.headerIcon}
+                        >
+                            <Ionicons name="log-out-outline" size={24} color={Colors.white} />
                         </TouchableOpacity>
-
-                        {/* Submit */}
-                        <View style={styles.submitRow}>
-                            <TouchableOpacity style={styles.submitButton} activeOpacity={0.85}>
-                                <Text style={styles.submitText}>submit</Text>
-                            </TouchableOpacity>
-                        </View>
                     </View>
                 </View>
+
+                {/* Search Bar */}
+                <View style={styles.searchContainer}>
+                    <View style={styles.searchPill}>
+                        <Ionicons name="search" size={20} color={Colors.gray} style={{ marginRight: Spacing.sm }} />
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="where are you going?"
+                            placeholderTextColor={Colors.gray}
+                            onFocus={() => router.push('/maps' as any)}
+                        />
+                    </View>
+                    <View style={styles.searchPillShadow} />
+                </View>
+
+                {/* Map Card */}
+                <TouchableOpacity
+                    style={styles.mapCardContainer}
+                    onPress={() => router.push('/maps' as any)}
+                    activeOpacity={0.9}
+                >
+                    <View style={styles.mapCard}>
+                        <View style={styles.mapPlaceholder}>
+                            <Ionicons name="map" size={48} color={Colors.gray} />
+                            <Text style={styles.mapPlaceholderText}>
+                                {location ? 'tap to view safety map' : 'acquiring location...'}
+                            </Text>
+                        </View>
+                        {/* Status Overlay */}
+                        <View style={styles.mapStatus}>
+                            <View style={[styles.statusDot, location && { backgroundColor: Colors.success }]} />
+                            <Text style={styles.statusText}>
+                                {location ? 'LIVE: Location Active' : 'Waiting for GPS...'}
+                            </Text>
+                        </View>
+                    </View>
+                </TouchableOpacity>
+
+                {/* Neo-brutalist Report Section */}
+                <View style={styles.reportSection}>
+                    <Text style={styles.reportTitle}>Report The Incident Here</Text>
+
+                    {/* Nature of incident */}
+                    <TouchableOpacity
+                        style={styles.brutalInput}
+                        onPress={() => setSelectorVisible(true)}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={[styles.inputText, selectedTypes.length > 0 && styles.inputTextActive]}>
+                            {selectedTypes.length > 0 ? selectedTypes.join(', ') : 'Nature of incident'}
+                            {selectedTypes.length === 0 && <Text style={styles.required}>*</Text>}
+                        </Text>
+                        <Ionicons name="chevron-down" size={20} color={Colors.bgDark} />
+                    </TouchableOpacity>
+
+                    {/* Details */}
+                    <TextInput
+                        style={styles.brutalTextArea}
+                        placeholder="provide details here"
+                        placeholderTextColor={Colors.gray}
+                        value={description}
+                        onChangeText={setDescription}
+                        multiline
+                        numberOfLines={4}
+                        textAlignVertical="top"
+                    />
+
+                    {/* Upload evidence */}
+                    <TouchableOpacity style={styles.brutalInput} activeOpacity={0.7}>
+                        <Text style={styles.inputText}>upload evidence</Text>
+                        <Ionicons name="cloud-upload-outline" size={20} color={Colors.bgDark} />
+                    </TouchableOpacity>
+
+                    {/* Submit Button */}
+                    <View style={styles.submitContainer}>
+                        <TouchableOpacity
+                            style={[
+                                styles.brutalSubmit,
+                                (selectedTypes.length === 0 || isSubmitting || !location) && styles.submitDisabled
+                            ]}
+                            onPress={handleSubmitReport}
+                            disabled={isSubmitting || !location}
+                            activeOpacity={0.85}
+                        >
+                            <Text style={styles.submitText}>
+                                {isSubmitting ? 'submitting...' : 'submit'}
+                            </Text>
+                            <View style={styles.submitArrow}>
+                                <Ionicons name="arrow-forward" size={16} color={Colors.white} />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
             </ScrollView>
             <View style={styles.bottomNav}>
                 <BottomNavBar activeTab={activeTab} onTabPress={onTabPress} />
             </View>
+
+            {/* Incident Type Selector Modal */}
+            <IncidentTypeSelector
+                selectedTypes={selectedTypes}
+                onToggleType={handleToggleType}
+                visible={selectorVisible}
+                onClose={() => setSelectorVisible(false)}
+            />
         </View>
     );
 }
-
-const darkMapStyle = [
-    { elementType: 'geometry', stylers: [{ color: '#212121' }] },
-    { elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
-    { elementType: 'labels.text.stroke', stylers: [{ color: '#212121' }] },
-    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2c2c2c' }] },
-    { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#212121' }] },
-    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#000000' }] },
-];
 
 const styles = StyleSheet.create({
     container: {
@@ -186,212 +257,231 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingBottom: 120,
+        paddingBottom: 140,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
         paddingHorizontal: Spacing.lg,
         paddingTop: 60,
         paddingBottom: Spacing.lg,
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
         gap: Spacing.md,
     },
+    headerRight: {
+        flexDirection: 'row',
+        gap: Spacing.sm,
+    },
+    headerIcon: {
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     avatar: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: Colors.cardBg,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: Colors.white,
+        borderWidth: 2,
+        borderColor: Colors.bgDark,
         justifyContent: 'center',
         alignItems: 'center',
     },
     greeting: {
-        flex: 1,
+        justifyContent: 'center',
     },
     greetingName: {
         fontSize: FontSizes.md,
-        fontWeight: '700',
+        fontWeight: '800',
         color: Colors.white,
+        textTransform: 'lowercase',
     },
     greetingSub: {
-        fontSize: FontSizes.sm,
+        fontSize: 10,
         color: Colors.grayLight,
         marginTop: 2,
     },
     searchContainer: {
-        paddingHorizontal: Spacing.lg,
-        marginBottom: Spacing.lg,
-    },
-    mapCard: {
         marginHorizontal: Spacing.lg,
-        borderRadius: BorderRadius.lg,
-        overflow: 'hidden',
-        backgroundColor: Colors.cardBg,
-        marginBottom: Spacing.lg,
-    },
-    mapWrapper: {
-        height: 180,
+        marginBottom: Spacing.xl,
         position: 'relative',
     },
-    mapPreview: {
-        flex: 1,
-    },
-    youMarker: {
-        position: 'absolute',
-        top: 20,
-        left: 24,
+    searchPill: {
+        flexDirection: 'row',
         alignItems: 'center',
-    },
-    youText: {
-        fontSize: 10,
-        fontWeight: '800',
-        color: Colors.white,
-        backgroundColor: Colors.purple,
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 4,
-        overflow: 'hidden',
-        marginBottom: 4,
-    },
-    youDot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
         backgroundColor: Colors.white,
-        borderWidth: 2,
+        borderWidth: 3,
         borderColor: Colors.bgDark,
+        borderRadius: BorderRadius.full,
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: 12,
+        zIndex: 2,
     },
-    mapFallback: {
-        height: 180,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: Colors.cardBg,
-        gap: Spacing.sm,
+    searchPillShadow: {
+        position: 'absolute',
+        top: 6,
+        left: 0,
+        right: 0,
+        bottom: -6,
+        backgroundColor: Colors.bgDark,
+        borderRadius: BorderRadius.full,
+        zIndex: 1,
+        opacity: 0.3,
     },
-    mapFallbackText: {
-        fontSize: FontSizes.md,
-        color: Colors.grayLight,
-        fontWeight: '600',
-    },
-    mapFallbackSub: {
-        fontSize: FontSizes.xs,
-        color: Colors.gray,
-    },
-    shareButton: {
-        backgroundColor: Colors.white,
-        paddingVertical: Spacing.sm + 2,
-        paddingHorizontal: Spacing.xl,
-        borderRadius: BorderRadius.sm,
-        alignSelf: 'flex-end',
-        margin: Spacing.md,
-        marginTop: -Spacing.xl,
-        zIndex: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-        elevation: 4,
-    },
-    shareText: {
+    searchInput: {
+        flex: 1,
         fontSize: FontSizes.sm,
         fontWeight: '600',
         color: Colors.bgDark,
+    },
+    mapCardContainer: {
+        marginHorizontal: Spacing.lg,
+        marginBottom: Spacing.xl,
+    },
+    mapCard: {
+        height: 180,
+        backgroundColor: '#1A1A1A',
+        borderRadius: 24,
+        borderWidth: 3,
+        borderColor: Colors.white,
+        overflow: 'hidden',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    mapPlaceholder: {
+        alignItems: 'center',
+        gap: Spacing.sm,
+    },
+    mapPlaceholderText: {
+        color: Colors.gray,
+        fontSize: FontSizes.xs,
+        fontWeight: '600',
+    },
+    mapStatus: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: BorderRadius.full,
+        gap: 6,
+    },
+    statusDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: Colors.gray,
+    },
+    statusText: {
+        color: Colors.white,
+        fontSize: 10,
+        fontWeight: '700',
     },
     reportSection: {
         marginHorizontal: Spacing.lg,
-        marginTop: Spacing.md,
-    },
-    folderTab: {
-        backgroundColor: Colors.purple,
-        width: 40,
-        height: 28,
-        borderTopLeftRadius: BorderRadius.sm,
-        borderTopRightRadius: BorderRadius.sm,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginLeft: 20,
-    },
-    reportCard: {
-        backgroundColor: Colors.white,
-        borderRadius: BorderRadius.lg,
-        padding: Spacing.lg,
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
+        backgroundColor: '#e2ccf5', // light purple from mockup
+        borderRadius: 32,
+        borderWidth: 3,
+        borderColor: Colors.bgDark,
+        padding: Spacing.xl,
     },
     reportTitle: {
         fontSize: FontSizes.lg,
-        fontWeight: '800',
+        fontWeight: '900',
         color: Colors.bgDark,
         marginBottom: Spacing.lg,
+        textAlign: 'center',
     },
-    inputField: {
+    brutalInput: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        borderWidth: 1,
-        borderColor: '#D0D0D0',
-        borderRadius: BorderRadius.full,
+        backgroundColor: Colors.white,
+        borderWidth: 3,
+        borderColor: Colors.bgDark,
+        borderRadius: 16,
         paddingHorizontal: Spacing.lg,
-        paddingVertical: Spacing.md,
+        paddingVertical: 14,
         marginBottom: Spacing.md,
     },
-    inputPlaceholder: {
-        fontSize: FontSizes.sm,
-        color: Colors.gray,
-    },
-    required: {
-        color: Colors.red,
-    },
-    detailsField: {
-        borderWidth: 1,
-        borderColor: '#D0D0D0',
-        borderRadius: BorderRadius.md,
+    brutalTextArea: {
+        backgroundColor: Colors.white,
+        borderWidth: 3,
+        borderColor: Colors.bgDark,
+        borderRadius: 16,
         paddingHorizontal: Spacing.lg,
-        paddingVertical: Spacing.md,
+        paddingVertical: 14,
         marginBottom: Spacing.md,
         minHeight: 100,
+        fontSize: FontSizes.sm,
+        color: Colors.bgDark,
+        fontWeight: '600',
     },
-    uploadField: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        borderWidth: 1,
-        borderColor: '#D0D0D0',
-        borderRadius: BorderRadius.md,
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: Spacing.md,
-        marginBottom: Spacing.lg,
-    },
-    uploadPlaceholder: {
+    inputText: {
         fontSize: FontSizes.sm,
         color: Colors.gray,
+        fontWeight: '700',
+        flex: 1,
     },
-    submitRow: {
+    inputTextActive: {
+        color: Colors.bgDark,
+    },
+    required: {
+        color: Colors.sosRed,
+    },
+    submitContainer: {
         alignItems: 'center',
+        marginTop: Spacing.sm,
     },
-    submitButton: {
-        borderWidth: 2,
-        borderColor: Colors.sosRed,
+    brutalSubmit: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: Colors.white,
+        borderWidth: 3,
+        borderColor: Colors.bgDark,
         borderRadius: BorderRadius.full,
-        paddingHorizontal: Spacing.xxl,
-        paddingVertical: Spacing.md,
-        minWidth: 140,
-        alignItems: 'center',
+        paddingLeft: Spacing.xl,
+        paddingRight: 8,
+        paddingVertical: 8,
+        gap: Spacing.md,
+        shadowColor: Colors.bgDark,
+        shadowOffset: { width: 4, height: 4 },
+        shadowOpacity: 1,
+        shadowRadius: 0,
+    },
+    submitDisabled: {
+        opacity: 0.6,
+        shadowOffset: { width: 0, height: 0 },
     },
     submitText: {
         fontSize: FontSizes.md,
-        fontWeight: '700',
+        fontWeight: '900',
         color: Colors.bgDark,
+    },
+    submitArrow: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: Colors.bgDark,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     bottomNav: {
         position: "absolute",
         bottom: 20,
         left: 0,
         right: 0,
-
         flexDirection: "row",
         justifyContent: "center",
         alignItems: "center",
-
         zIndex: 100,
     },
 });

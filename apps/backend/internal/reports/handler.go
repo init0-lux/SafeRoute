@@ -47,6 +47,16 @@ type listReportsResponse struct {
 	Offset  int              `json:"offset"`
 }
 
+type historyResponse struct {
+	Reports []historyReportResponse `json:"reports"`
+}
+
+type historyReportResponse struct {
+	reportResponse
+	Status string                 `json:"status"`
+	Events []ComplaintEventResult `json:"events"`
+}
+
 func NewHandler(service *Service, authGuard fiber.Handler) *Handler {
 	return &Handler{
 		service:   service,
@@ -56,6 +66,7 @@ func NewHandler(service *Service, authGuard fiber.Handler) *Handler {
 
 func (h *Handler) RegisterRoutes(router fiber.Router) {
 	router.Post("/reports", h.authGuard, h.create)
+	router.Get("/reports/me", h.authGuard, h.listUserHistory)
 	router.Get("/reports/:id", h.getByID)
 	router.Get("/reports", h.listNearby)
 }
@@ -184,6 +195,42 @@ func (h *Handler) listNearby(c *fiber.Ctx) error {
 		Count:   page.Count,
 		Limit:   page.Limit,
 		Offset:  page.Offset,
+	})
+}
+
+func (h *Handler) listUserHistory(c *fiber.Ctx) error {
+	currentUser, ok := auth.CurrentUser(c)
+	if !ok {
+		return writeReportError(c, ErrUnauthorizedReport)
+	}
+
+	reportsList, err := h.service.ListUserHistory(c.UserContext(), currentUser.ID)
+	if err != nil {
+		return writeReportError(c, err)
+	}
+
+	items := make([]historyReportResponse, len(reportsList))
+	for i, report := range reportsList {
+		items[i] = historyReportResponse{
+			reportResponse: newReportResponse(reportResponseInput{
+				ID:          report.ID,
+				UserID:      report.UserID,
+				Type:        report.Type,
+				Description: report.Description,
+				Latitude:    report.Latitude,
+				Longitude:   report.Longitude,
+				OccurredAt:  report.OccurredAt,
+				CreatedAt:   report.CreatedAt,
+				Source:      "app",
+				EvidenceIDs: report.EvidenceIDs,
+			}),
+			Status: report.Status,
+			Events: report.Events,
+		}
+	}
+
+	return c.Status(fiber.StatusOK).JSON(historyResponse{
+		Reports: items,
 	})
 }
 

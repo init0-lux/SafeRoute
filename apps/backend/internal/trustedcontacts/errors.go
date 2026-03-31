@@ -14,4 +14,5 @@ var (
 	ErrTrustedContactExists    = errors.New("trusted contact already exists")
 	ErrTrustedContactNotFound  = errors.New("trusted contact not found")
 	ErrUnauthorized            = errors.New("unauthorized")
+	ErrContactNotRegistered    = errors.New("the contact is not registered on the SafeRoute platform")
 )

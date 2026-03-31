@@ -254,6 +254,7 @@ func mustSessionManager(t *testing.T) *auth.SessionManager {
 func registerEvidenceUser(t *testing.T, application *fiber.App, phone string) *http.Cookie {
 	t.Helper()
 	resp := performEvidenceJSONRequest(t, application, http.MethodPost, "/api/v1/auth/register", map[string]string{
+		"username": "seeduser_evidence",
 		"phone":    phone,
 		"password": "supersecret",
 	}, nil)
@@ -373,12 +374,14 @@ type memoryEvidenceAuthRepository struct {
 	nextID  int
 	byID    map[string]*auth.User
 	byPhone map[string]*auth.User
+	byEmail map[string]*auth.User
 }
 
 func newMemoryEvidenceAuthRepository() *memoryEvidenceAuthRepository {
 	return &memoryEvidenceAuthRepository{
 		byID:    make(map[string]*auth.User),
 		byPhone: make(map[string]*auth.User),
+		byEmail: make(map[string]*auth.User),
 	}
 }
 
@@ -395,6 +398,9 @@ func (r *memoryEvidenceAuthRepository) CreateUser(_ context.Context, user *auth.
 	copyUser.ID = fmt.Sprintf("user-%d", r.nextID)
 	r.byID[copyUser.ID] = &copyUser
 	r.byPhone[copyUser.Phone] = &copyUser
+	if user.Email != nil {
+		r.byEmail[*user.Email] = &copyUser
+	}
 	user.ID = copyUser.ID
 
 	return nil
@@ -405,6 +411,19 @@ func (r *memoryEvidenceAuthRepository) GetUserByPhone(_ context.Context, phone s
 	defer r.mu.Unlock()
 
 	user, exists := r.byPhone[strings.Join(strings.Fields(phone), "")]
+	if !exists {
+		return nil, auth.ErrUserNotFound
+	}
+
+	copyUser := *user
+	return &copyUser, nil
+}
+
+func (r *memoryEvidenceAuthRepository) GetUserByEmail(_ context.Context, email string) (*auth.User, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	user, exists := r.byEmail[email]
 	if !exists {
 		return nil, auth.ErrUserNotFound
 	}

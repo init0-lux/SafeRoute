@@ -21,22 +21,20 @@ function getApiBaseUrl(): string {
 
 export const API_BASE_URL = getApiBaseUrl();
 
-// Placeholder API key — replace with your actual Google Maps API key
-export const GOOGLE_MAPS_API_KEY = 'YOUR_API_KEY_HERE';
+// Read API key from environment variable
+export const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_ROUTES_API_KEY || '';
 
-export const INCIDENT_TYPES = [
-    'Rape / Attempt to Rape',
-    'Sexual Harassment',
-    'Molestation',
-    'Domestic Violence',
-    'Dowry Harassment / Dowry Death',
-    'Kidnapping / Abduction',
-    'Stalking / Cyberstalking',
-    'Cyber Crime Against Women',
-    'Acid Attack',
-    'Trafficking',
-    'Insult to Modesty',
-    'Other',
-] as const;
+// Backend-accepted report types: harassment, unsafe_area, stalking, assault, theft, suspicious_activity
+// We map user-friendly display labels to API-accepted slugs.
+export const INCIDENT_TYPES_MAP: Record<string, string> = {
+    'Harassment': 'harassment',
+    'Unsafe Area': 'unsafe_area',
+    'Stalking': 'stalking',
+    'Assault': 'assault',
+    'Theft': 'theft',
+    'Suspicious Activity': 'suspicious_activity',
+} as const;
+
+export const INCIDENT_TYPES = Object.keys(INCIDENT_TYPES_MAP) as readonly string[];
 
 export type IncidentType = (typeof INCIDENT_TYPES)[number];

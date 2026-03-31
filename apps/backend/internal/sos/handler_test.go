@@ -143,6 +143,7 @@ func newSOSApp(t *testing.T, authRepo *memoryAuthRepository, sosRepo *memorySOSR
 
 	authService := auth.NewService(authRepo)
 	user, err := authService.Register(context.Background(), auth.RegisterInput{
+		Username: "sosuser",
 		Phone:    "+919999911111",
 		Password: "supersecret",
 	})
@@ -227,12 +228,14 @@ type memoryAuthRepository struct {
 	nextID  int
 	byID    map[string]*auth.User
 	byPhone map[string]*auth.User
+	byEmail map[string]*auth.User
 }
 
 func newMemoryAuthRepository() *memoryAuthRepository {
 	return &memoryAuthRepository{
 		byID:    make(map[string]*auth.User),
 		byPhone: make(map[string]*auth.User),
+		byEmail: make(map[string]*auth.User),
 	}
 }
 
@@ -249,6 +252,9 @@ func (r *memoryAuthRepository) CreateUser(_ context.Context, user *auth.User) er
 	copyUser.ID = fmt.Sprintf("user-%d", r.nextID)
 	r.byID[copyUser.ID] = &copyUser
 	r.byPhone[copyUser.Phone] = &copyUser
+	if user.Email != nil {
+		r.byEmail[*user.Email] = &copyUser
+	}
 	user.ID = copyUser.ID
 
 	return nil
@@ -259,6 +265,19 @@ func (r *memoryAuthRepository) GetUserByPhone(_ context.Context, phone string) (
 	defer r.mu.Unlock()
 
 	user, exists := r.byPhone[phone]
+	if !exists {
+		return nil, auth.ErrUserNotFound
+	}
+
+	copyUser := *user
+	return &copyUser, nil
+}
+
+func (r *memoryAuthRepository) GetUserByEmail(_ context.Context, email string) (*auth.User, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	user, exists := r.byEmail[email]
 	if !exists {
 		return nil, auth.ErrUserNotFound
 	}

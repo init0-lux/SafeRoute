@@ -253,12 +253,14 @@ type memoryRepository struct {
 	nextUserID int
 	byID       map[string]*auth.User
 	byPhone    map[string]*auth.User
+	byEmail    map[string]*auth.User
 }
 
 func newMemoryRepository() *memoryRepository {
 	return &memoryRepository{
 		byID:    make(map[string]*auth.User),
 		byPhone: make(map[string]*auth.User),
+		byEmail: make(map[string]*auth.User),
 	}
 }
 
@@ -275,6 +277,9 @@ func (r *memoryRepository) CreateUser(_ context.Context, user *auth.User) error 
 	copyUser.ID = fmt.Sprintf("user-%d", r.nextUserID)
 	r.byID[copyUser.ID] = &copyUser
 	r.byPhone[copyUser.Phone] = &copyUser
+	if user.Email != nil {
+		r.byEmail[*user.Email] = &copyUser
+	}
 	user.ID = copyUser.ID
 
 	return nil
@@ -285,6 +290,19 @@ func (r *memoryRepository) GetUserByPhone(_ context.Context, phone string) (*aut
 	defer r.mu.Unlock()
 
 	user, exists := r.byPhone[phone]
+	if !exists {
+		return nil, auth.ErrUserNotFound
+	}
+
+	copyUser := *user
+	return &copyUser, nil
+}
+
+func (r *memoryRepository) GetUserByEmail(_ context.Context, email string) (*auth.User, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	user, exists := r.byEmail[email]
 	if !exists {
 		return nil, auth.ErrUserNotFound
 	}

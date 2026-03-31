@@ -32,10 +32,9 @@ function RootNavigator() {
       />
       <Stack.Screen name="home" />
       <Stack.Screen
-        name="report"
+        name="history"
         options={{
-          animation: 'slide_from_bottom',
-          presentation: 'modal',
+          animation: 'slide_from_right',
         }}
       />
     </Stack>

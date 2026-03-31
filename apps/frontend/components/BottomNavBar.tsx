@@ -12,7 +12,7 @@ interface BottomNavBarProps {
 const tabs = [
     { key: 'home', icon: 'home-outline' as const, activeIcon: 'home' as const, label: 'Home' },
     { key: 'location', icon: 'location-outline' as const, activeIcon: 'location' as const, label: 'Routes' },
-    { key: 'report', icon: 'folder-outline' as const, activeIcon: 'folder' as const, label: 'Report' },
+    { key: 'history', icon: 'folder-outline' as const, activeIcon: 'folder' as const, label: 'History' },
 ];
 
 export default function BottomNavBar({ activeTab, onTabPress }: BottomNavBarProps) {

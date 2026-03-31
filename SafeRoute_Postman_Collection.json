@@ -1,812 +1,927 @@
 {
-	"info": {
-		"_postman_id": "7d9e8c4b-1a2b-4c3d-9e8f-0a1b2c3d4e5f",
-		"name": "SafeRoute API",
-		"description": "API collection for SafeRoute Backend - A trust-first urban safety platform.",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-	},
-	"item": [
-		{
-			"name": "Health",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{base_url}}/health",
-					"host": [
-						"{{base_url}}"
-					],
-					"path": [
-						"health"
-					]
-				}
-			}
-		},
-		{
-			"name": "Auth",
-			"item": [
-				{
-					"name": "Register",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"phone\": \"+919876543210\",\n    \"email\": \"user@example.com\",\n    \"password\": \"securepassword123\"\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/auth/register",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"auth",
-								"register"
-							]
-						}
-					}
-				},
-				{
-					"name": "Login",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"phone\": \"+919876543210\",\n    \"password\": \"securepassword123\"\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/auth/login",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"auth",
-								"login"
-							]
-						}
-					}
-				},
-				{
-					"name": "Get Me",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/auth/me",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"auth",
-								"me"
-							]
-						}
-					}
-				},
-				{
-					"name": "Update Push Token",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"token\": \"ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]\"\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/auth/push-token",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"auth",
-								"push-token"
-							]
-						},
-						"description": "Register the Expo Push Token for the current user to receive SOS alerts."
-					}
-				},
-				{
-					"name": "Logout",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/auth/logout",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"auth",
-								"logout"
-							]
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "Trusted Contacts",
-			"item": [
-				{
-					"name": "Create Request",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"name\": \"John Doe\",\n    \"phone\": \"+919998887776\",\n    \"email\": \"john@example.com\"\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/trusted-contacts/requests",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"trusted-contacts",
-								"requests"
-							]
-						}
-					}
-				},
-				{
-					"name": "Accept Request",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"token\": \"invite-token-from-previous-step\"\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/trusted-contacts/requests/:id/accept",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"trusted-contacts",
-								"requests",
-								"request-uuid",
-								"accept"
-							]
-						}
-					}
-				},
-				{
-					"name": "Delete Contact",
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/trusted-contacts/:id",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"trusted-contacts",
-								"contact-uuid"
-							]
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "SOS",
-			"item": [
-				{
-					"name": "Start SOS Session",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/sos/start",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"sos",
-								"start"
-							]
-						}
-					}
-				},
-				{
-					"name": "Get Session",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/sos/:id",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"sos",
-								"session-uuid"
-							]
-						}
-					}
-				},
-				{
-					"name": "End Session",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/sos/:id/end",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"sos",
-								"session-uuid",
-								"end"
-							]
-						}
-					}
-				},
-				{
-					"name": "Reporter Stream (WebSocket)",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "ws://localhost:8080/api/v1/sos/:id/stream",
-							"protocol": "ws",
-							"host": [
-								"localhost"
-							],
-							"port": "8080",
-							"path": [
-								"api",
-								"v1",
-								"sos",
-								"session-uuid",
-								"stream"
-							]
-						}
-					}
-				},
-				{
-					"name": "Viewer Stream (SSE)",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/sos/viewer/stream?token=viewer-token",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"sos",
-								"viewer",
-								"stream"
-							],
-							"query": [
-								{
-									"key": "token",
-									"value": "viewer-token"
-								}
-							]
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "Reports",
-			"item": [
-				{
-					"name": "Create Report",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"if (pm.response.code === 201) {",
-									"    const body = pm.response.json();",
-									"    if (body.report && body.report.id) {",
-									"        pm.collectionVariables.set('report_id', body.report.id);",
-									"    }",
-									"}"
-								]
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"type\": \"harassment\",\n    \"description\": \"man following me near the bus stop\",\n    \"lat\": 12.9716,\n    \"lng\": 77.5946\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/reports",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"reports"
-							]
-						},
-						"description": "Create a new incident report. This request requires the auth cookies set by Register or Login to already exist in Postman's cookie jar for localhost. On success, the Postman test script stores `report_id` automatically."
-					},
-					"response": [
-						{
-							"name": "Create Report Success",
-							"status": "Created",
-							"code": 201,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"report\": {\n        \"id\": \"report-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"type\": \"harassment\",\n        \"description\": \"man following me near the bus stop\",\n        \"lat\": 12.9716,\n        \"lng\": 77.5946,\n        \"occurred_at\": \"2026-03-31T10:30:00Z\",\n        \"created_at\": \"2026-03-31T10:30:00Z\",\n        \"source\": \"app\",\n        \"trust_score\": 0.3\n    }\n}"
-						},
-						{
-							"name": "Create Report Unauthorized",
-							"status": "Unauthorized",
-							"code": 401,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"error\": \"unauthorized\"\n}"
-						}
-					]
-				},
-				{
-					"name": "Get Report By ID",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/reports/{{report_id}}",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"reports",
-								"{{report_id}}"
-							]
-						},
-						"description": "Fetch a single report by its ID. Set the collection variable `report_id` from a previously created report."
-					},
-					"response": [
-						{
-							"name": "Get Report Success",
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"report\": {\n        \"id\": \"report-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"type\": \"harassment\",\n        \"description\": \"man following me near the bus stop\",\n        \"lat\": 12.9716,\n        \"lng\": 77.5946,\n        \"occurred_at\": \"2026-03-31T10:30:00Z\",\n        \"created_at\": \"2026-03-31T10:30:00Z\",\n        \"source\": \"app\",\n        \"evidence_ids\": [\n            \"evidence-1\"\n        ],\n        \"trust_score\": 0.3\n    }\n}"
-						},
-						{
-							"name": "Get Report Not Found",
-							"status": "Not Found",
-							"code": 404,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"error\": \"report not found\"\n}"
-						}
-					]
-				},
-				{
-					"name": "List Nearby Reports",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/reports?lat=12.9716&lng=77.5946&radius=500&limit=20&offset=0",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"reports"
-							],
-							"query": [
-								{
-									"key": "lat",
-									"value": "12.9716"
-								},
-								{
-									"key": "lng",
-									"value": "77.5946"
-								},
-								{
-									"key": "radius",
-									"value": "500"
-								},
-								{
-									"key": "limit",
-									"value": "20"
-								},
-								{
-									"key": "offset",
-									"value": "0"
-								}
-							]
-						},
-						"description": "List nearby reports using radius search. Results are paginated and sorted by trust score and recency."
-					},
-					"response": [
-						{
-							"name": "Nearby Reports Success",
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"reports\": [\n        {\n            \"id\": \"report-123\",\n            \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n            \"type\": \"harassment\",\n            \"description\": \"man following me near the bus stop\",\n            \"lat\": 12.9716,\n            \"lng\": 77.5946,\n            \"occurred_at\": \"2026-03-31T10:30:00Z\",\n            \"created_at\": \"2026-03-31T10:30:00Z\",\n            \"source\": \"app\",\n            \"trust_score\": 0.3,\n            \"distance_meters\": 0\n        }\n    ],\n    \"count\": 1,\n    \"limit\": 20,\n    \"offset\": 0\n}"
-						},
-						{
-							"name": "Nearby Reports Bad Request",
-							"status": "Bad Request",
-							"code": 400,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"error\": \"radius must be greater than 0 and within the configured maximum\"\n}"
-						}
-					]
-				}
-			]
-		},
-		{
-			"name": "Trust",
-			"item": [
-				{
-					"name": "Get My Trust",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/trust/me",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"trust",
-								"me"
-							]
-						},
-						"description": "Fetch the current authenticated user's trust score, counts, and explainable breakdown. Requires auth cookies from Register or Login."
-					},
-					"response": [
-						{
-							"name": "Trust Me Success",
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"score\": 0.3,\n    \"reports_count\": 1,\n    \"corroboration_count\": 0,\n    \"verified\": false,\n    \"updated_at\": \"2026-03-31T10:30:00Z\",\n    \"breakdown\": {\n        \"base\": 0.3,\n        \"corroboration_bonus\": 0,\n        \"verified_bonus\": 0\n    }\n}"
-						},
-						{
-							"name": "Trust Me Unauthorized",
-							"status": "Unauthorized",
-							"code": 401,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"error\": \"unauthorized\"\n}"
-						}
-					]
-				},
-				{
-					"name": "Verify Trust",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"verified\": true\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/trust/verify",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"trust",
-								"verify"
-							]
-						},
-						"description": "Stub verification endpoint for the authenticated user. For now this toggles the verified flag and recomputes trust score."
-					},
-					"response": [
-						{
-							"name": "Verify Trust Success",
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"score\": 0.45,\n    \"reports_count\": 1,\n    \"corroboration_count\": 0,\n    \"verified\": true,\n    \"updated_at\": \"2026-03-31T10:35:00Z\",\n    \"breakdown\": {\n        \"base\": 0.3,\n        \"corroboration_bonus\": 0,\n        \"verified_bonus\": 0.15\n    }\n}"
-						}
-					]
-				}
-			]
-		},
-		{
-			"name": "Evidence",
-			"item": [
-				{
-					"name": "Upload Evidence To Report",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"if (pm.response.code === 201) {",
-									"    const body = pm.response.json();",
-									"    if (body.evidence && body.evidence.id) {",
-									"        pm.collectionVariables.set('evidence_id', body.evidence.id);",
-									"    }",
-									"}"
-								]
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "report_id",
-									"value": "{{report_id}}",
-									"type": "text"
-								},
-								{
-									"key": "file",
-									"type": "file",
-									"src": ""
-								}
-							]
-						},
-						"url": {
-							"raw": "{{base_url}}/evidence/upload",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"evidence",
-								"upload"
-							]
-						},
-						"description": "Upload evidence linked to a report. Use a supported image or audio file. On success, the Postman test script stores `evidence_id` automatically."
-					},
-					"response": [
-						{
-							"name": "Upload Evidence Success",
-							"status": "Created",
-							"code": 201,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"evidence\": {\n        \"id\": \"evidence-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"report_id\": \"report-123\",\n        \"type\": \"image\",\n        \"url\": \"http://localhost:8080/api/v1/evidence/evidence-123/content\",\n        \"hash\": \"6c1d6f0a4d4e9f0d66f8f8f1c1e1b89b0f7c2f39cb8e4f34d70b7fbe95d7a4c3\",\n        \"media_type\": \"image/png\",\n        \"size_bytes\": 2048,\n        \"original_filename\": \"photo.png\",\n        \"created_at\": \"2026-03-31T10:40:00Z\"\n    }\n}"
-						},
-						{
-							"name": "Upload Evidence Bad Request",
-							"status": "Bad Request",
-							"code": 400,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"error\": \"unsupported media type\"\n}"
-						}
-					]
-				},
-				{
-					"name": "Get Evidence Metadata",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/evidence/{{evidence_id}}",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"evidence",
-								"{{evidence_id}}"
-							]
-						},
-						"description": "Fetch evidence metadata for the authenticated owner."
-					},
-					"response": [
-						{
-							"name": "Evidence Metadata Success",
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"evidence\": {\n        \"id\": \"evidence-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"report_id\": \"report-123\",\n        \"type\": \"image\",\n        \"url\": \"http://localhost:8080/api/v1/evidence/evidence-123/content\",\n        \"hash\": \"6c1d6f0a4d4e9f0d66f8f8f1c1e1b89b0f7c2f39cb8e4f34d70b7fbe95d7a4c3\",\n        \"media_type\": \"image/png\",\n        \"size_bytes\": 2048,\n        \"original_filename\": \"photo.png\",\n        \"created_at\": \"2026-03-31T10:40:00Z\"\n    }\n}"
-						}
-					]
-				},
-				{
-					"name": "Get Evidence Content",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/evidence/{{evidence_id}}/content",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"evidence",
-								"{{evidence_id}}",
-								"content"
-							]
-						},
-						"description": "Download the raw evidence file for the authenticated owner."
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Safety",
-			"item": [
-				{
-					"name": "Get Safety Score",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/safety/score?lat=12.9716&lng=77.5946&radius=500",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"safety",
-								"score"
-							],
-							"query": [
-								{
-									"key": "lat",
-									"value": "12.9716"
-								},
-								{
-									"key": "lng",
-									"value": "77.5946"
-								},
-								{
-									"key": "radius",
-									"value": "500"
-								}
-							]
-						},
-						"description": "Compute a safety score for a point using recent and historical nearby reports, trust-weighted density, and a time-of-day factor."
-					},
-					"response": [
-						{
-							"name": "Safety Score Success",
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"score\": 62,\n    \"risk_level\": \"moderate\",\n    \"factors\": {\n        \"recent_reports\": 3,\n        \"historical_reports\": 12,\n        \"recent_trust_weight\": 1.8,\n        \"historical_trust_weight\": 6.4,\n        \"time_risk\": \"high\",\n        \"time_risk_multiplier\": 0.8,\n        \"confidence\": \"high\",\n        \"confidence_score\": 1,\n        \"radius_meters\": 500,\n        \"recent_window_hours\": 6\n    }\n}"
-						},
-						{
-							"name": "Safety Score Bad Request",
-							"status": "Bad Request",
-							"code": 400,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"error\": \"radius must be greater than 0 and within the configured maximum\"\n}"
-						}
-					]
-				},
-				{
-					"name": "Get Route Safety Score",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"origin\": {\n        \"lat\": 12.9716,\n        \"lng\": 77.5946\n    },\n    \"destination\": {\n        \"lat\": 12.9352,\n        \"lng\": 77.6245\n    },\n    \"travel_mode\": \"walking\"\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/safety/route-score",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"safety",
-								"route-score"
-							]
-						},
-						"description": "Compute a safety score for the backend-chosen walking route between an origin and destination. Requires a configured Google Routes API key on the backend."
-					},
-					"response": [
-						{
-							"name": "Route Safety Score Success",
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"score\": 58,\n    \"risk_level\": \"moderate\",\n    \"route\": {\n        \"distance_meters\": 4200,\n        \"duration_seconds\": 3120,\n        \"polyline\": \"encoded-polyline-from-provider\"\n    },\n    \"summary\": {\n        \"recent_reports\": 6,\n        \"historical_reports\": 23,\n        \"recent_trust_weight\": 3.1,\n        \"historical_trust_weight\": 10.8,\n        \"highest_risk_segment_index\": 4\n    },\n    \"segments\": [\n        {\n            \"index\": 0,\n            \"start_fraction\": 0,\n            \"end_fraction\": 0.125,\n            \"score\": 74,\n            \"risk_level\": \"moderate\",\n            \"factors\": {\n                \"recent_reports\": 0,\n                \"historical_reports\": 2,\n                \"recent_trust_weight\": 0,\n                \"historical_trust_weight\": 0.6,\n                \"time_risk\": \"high\",\n                \"time_risk_multiplier\": 0.8,\n                \"confidence\": \"low\",\n                \"confidence_score\": 0.12\n            }\n        }\n    ]\n}"
-						},
-						{
-							"name": "Route Safety Score Unavailable",
-							"status": "Service Unavailable",
-							"code": 503,
-							"_postman_previewlanguage": "json",
-							"header": [],
-							"cookie": [],
-							"body": "{\n    \"error\": \"route provider unavailable\"\n}"
-						}
-					]
-				}
-			]
-		}
-	],
-	"variable": [
-		{
-			"key": "base_url",
-			"value": "http://localhost:8080/api/v1",
-			"type": "string"
-		},
-		{
-			"key": "report_id",
-			"value": "",
-			"type": "string"
-		},
-		{
-			"key": "evidence_id",
-			"value": "",
-			"type": "string"
-		}
-	]
+  "info": {
+    "_postman_id": "7d9e8c4b-1a2b-4c3d-9e8f-0a1b2c3d4e5f",
+    "name": "SafeRoute API",
+    "description": "API collection for SafeRoute Backend - A trust-first urban safety platform.\n\nBase URL: http://localhost:8080/api/v1\n\n## Authentication\nMost endpoints require JWT authentication. After login/register, the access_token is automatically saved to collection variables.\n\n## Phone Number Format\nPhone numbers must be in E.164 format (e.g., +919876543210 for India).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "report_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "session_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "evidence_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "contact_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "request_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Returns server health status including service name and environment."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"status\": \"ok\",\n  \"service\": \"SafeRoute Backend\",\n  \"environment\": \"development\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.tokens) {",
+                  "        pm.collectionVariables.set('access_token', jsonData.tokens.access_token);",
+                  "        pm.collectionVariables.set('refresh_token', jsonData.tokens.refresh_token);",
+                  "    }",
+                  "    if (jsonData.user) {",
+                  "        pm.collectionVariables.set('user_id', jsonData.user.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"priya_sharma\",\n  \"phone\": \"+917042891536\",\n  \"email\": \"priya.sharma@email.com\",\n  \"password\": \"SafeRoute@2026!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Create a new user account. Username and phone are required. Phone must be in E.164 format."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"user\": {\n    \"id\": \"uuid\",\n    \"username\": \"testuser\",\n    \"phone\": \"+919876543210\",\n    \"email\": \"user@example.com\",\n    \"trust_score\": 0.3,\n    \"verified\": false\n  },\n  \"tokens\": {\n    \"access_token\": \"jwt_token\",\n    \"refresh_token\": \"jwt_token\",\n    \"expires_in\": 899\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.tokens) {",
+                  "        pm.collectionVariables.set('access_token', jsonData.tokens.access_token);",
+                  "        pm.collectionVariables.set('refresh_token', jsonData.tokens.refresh_token);",
+                  "    }",
+                  "    if (jsonData.user) {",
+                  "        pm.collectionVariables.set('user_id', jsonData.user.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+917042891536\",\n  \"password\": \"SafeRoute@2026!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Authenticate user with phone and password. Returns JWT tokens."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.tokens) {",
+                  "        pm.collectionVariables.set('access_token', jsonData.tokens.access_token);",
+                  "        pm.collectionVariables.set('refresh_token', jsonData.tokens.refresh_token);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Refresh-Token",
+                "value": "{{refresh_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Refresh authentication tokens using the refresh token."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Retrieve the authenticated user's profile."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Push Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"ExponentPushToken[xxxxxxxxxxxxxxxxxxxxx]\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/push-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "push-token"]
+            },
+            "description": "Register Expo Push notification token for the current user."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Clear session cookies and log out user."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Create Report",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.report) {",
+                  "        pm.collectionVariables.set('report_id', jsonData.report.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"harassment\",\n  \"description\": \"Verbal harassment incident reported near the market area\",\n  \"lat\": 28.6280,\n  \"lng\": 77.2180\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reports",
+              "host": ["{{baseUrl}}"],
+              "path": ["reports"]
+            },
+            "description": "Create a new incident report. Report types include: theft, assault, harassment, suspicious_activity, etc."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Report By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reports/{{report_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reports", "{{report_id}}"]
+            },
+            "description": "Retrieve a specific report by ID. Public endpoint."
+          },
+          "response": []
+        },
+        {
+          "name": "List Nearby Reports",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reports?lat=28.6139&lng=77.2090&radius=5000&limit=20&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["reports"],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "28.6139",
+                  "description": "Latitude (required)"
+                },
+                {
+                  "key": "lng",
+                  "value": "77.2090",
+                  "description": "Longitude (required)"
+                },
+                {
+                  "key": "radius",
+                  "value": "5000",
+                  "description": "Radius in meters (required, max 5000)"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Number of results (optional, max 50)"
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": "Pagination offset (optional)"
+                }
+              ]
+            },
+            "description": "List reports within a specified radius from a geographic point."
+          },
+          "response": []
+        },
+        {
+          "name": "List My Reports",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["reports", "me"]
+            },
+            "description": "Retrieve all reports created by the authenticated user with complaint status and events."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Trust",
+      "item": [
+        {
+          "name": "Get My Trust Score",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/trust/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["trust", "me"]
+            },
+            "description": "Retrieve the authenticated user's trust score with breakdown."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"score\": 0.45,\n  \"reports_count\": 0,\n  \"corroboration_count\": 0,\n  \"verified\": true,\n  \"updated_at\": \"2026-03-31T11:48:13+05:30\",\n  \"breakdown\": {\n    \"base\": 0.3,\n    \"corroboration_bonus\": 0,\n    \"verified_bonus\": 0.15\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Verify User Trust",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verified\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/trust/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["trust", "verify"]
+            },
+            "description": "Set verification status for authenticated user. Verified users get a trust score bonus."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Evidence",
+      "item": [
+        {
+          "name": "Upload Evidence",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.evidence) {",
+                  "        pm.collectionVariables.set('evidence_id', jsonData.evidence.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Image (JPEG/PNG) or audio (MP3/WAV/OGG) file"
+                },
+                {
+                  "key": "report_id",
+                  "value": "{{report_id}}",
+                  "type": "text",
+                  "description": "Report UUID to attach evidence to (optional if session_id provided)"
+                },
+                {
+                  "key": "session_id",
+                  "value": "",
+                  "type": "text",
+                  "description": "SOS session UUID to attach evidence to (optional if report_id provided)",
+                  "disabled": true
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/evidence/upload",
+              "host": ["{{baseUrl}}"],
+              "path": ["evidence", "upload"]
+            },
+            "description": "Upload image or audio evidence linked to a report or SOS session. Max file size: 10MB."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Evidence Metadata",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/evidence/{{evidence_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["evidence", "{{evidence_id}}"]
+            },
+            "description": "Retrieve metadata for a specific evidence file."
+          },
+          "response": []
+        },
+        {
+          "name": "Download Evidence",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/evidence/{{evidence_id}}/content",
+              "host": ["{{baseUrl}}"],
+              "path": ["evidence", "{{evidence_id}}", "content"]
+            },
+            "description": "Download the raw evidence file (image/audio)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Safety",
+      "item": [
+        {
+          "name": "Get Safety Score",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/safety/score?lat=28.6139&lng=77.2090&radius=500",
+              "host": ["{{baseUrl}}"],
+              "path": ["safety", "score"],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "28.6139",
+                  "description": "Latitude (required)"
+                },
+                {
+                  "key": "lng",
+                  "value": "77.2090",
+                  "description": "Longitude (required)"
+                },
+                {
+                  "key": "radius",
+                  "value": "500",
+                  "description": "Radius in meters (optional, default 500, max 3000)"
+                }
+              ]
+            },
+            "description": "Calculate a safety score (0-100) for a geographic point based on nearby incident reports and time-of-day risk."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"score\": 76,\n  \"risk_level\": \"moderate\",\n  \"factors\": {\n    \"recent_reports\": 1,\n    \"historical_reports\": 1,\n    \"recent_trust_weight\": 0.45,\n    \"historical_trust_weight\": 0.45,\n    \"time_risk\": \"moderate\",\n    \"time_risk_multiplier\": 0.45,\n    \"confidence\": \"low\",\n    \"confidence_score\": 0.18,\n    \"radius_meters\": 500,\n    \"recent_window_hours\": 6\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Route Safety Score",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"origin\": {\n    \"lat\": 28.6139,\n    \"lng\": 77.2090\n  },\n  \"destination\": {\n    \"lat\": 28.6200,\n    \"lng\": 77.2200\n  },\n  \"travel_mode\": \"walking\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/safety/route-score",
+              "host": ["{{baseUrl}}"],
+              "path": ["safety", "route-score"]
+            },
+            "description": "Calculate a segmented safety score for a route. Supported travel modes: walking, transit."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "SOS",
+      "item": [
+        {
+          "name": "Start SOS Session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.session) {",
+                  "        pm.collectionVariables.set('session_id', jsonData.session.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sos/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["sos", "start"]
+            },
+            "description": "Start a new SOS emergency session. Notifies trusted contacts automatically."
+          },
+          "response": []
+        },
+        {
+          "name": "Get SOS Session",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sos/{{session_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["sos", "{{session_id}}"]
+            },
+            "description": "Retrieve details of a specific SOS session."
+          },
+          "response": []
+        },
+        {
+          "name": "Record Location Ping",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lat\": 28.6139,\n  \"lng\": 77.2090,\n  \"ts\": \"2026-03-31T06:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sos/{{session_id}}/ping",
+              "host": ["{{baseUrl}}"],
+              "path": ["sos", "{{session_id}}", "ping"]
+            },
+            "description": "Record a location update during an active SOS session. Timestamp is optional."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Viewer Grant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"trusted_contact_id\": \"{{contact_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sos/{{session_id}}/viewers",
+              "host": ["{{baseUrl}}"],
+              "path": ["sos", "{{session_id}}", "viewers"]
+            },
+            "description": "Create a viewing access token for a trusted contact to view the SOS stream."
+          },
+          "response": []
+        },
+        {
+          "name": "End SOS Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sos/{{session_id}}/end",
+              "host": ["{{baseUrl}}"],
+              "path": ["sos", "{{session_id}}", "end"]
+            },
+            "description": "End an active SOS session."
+          },
+          "response": []
+        },
+        {
+          "name": "Reporter Stream (WebSocket)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sos/{{session_id}}/stream",
+              "host": ["{{baseUrl}}"],
+              "path": ["sos", "{{session_id}}", "stream"]
+            },
+            "description": "WebSocket endpoint for the SOS reporter to stream real-time location updates. Send JSON: {\"lat\": float, \"lng\": float, \"ts\": string}"
+          },
+          "response": []
+        },
+        {
+          "name": "Viewer Stream (SSE)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sos/viewer/stream?token=viewer-token-here",
+              "host": ["{{baseUrl}}"],
+              "path": ["sos", "viewer", "stream"],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "viewer-token-here",
+                  "description": "Viewer access token from Create Viewer Grant"
+                }
+              ]
+            },
+            "description": "Server-Sent Events stream for trusted contacts to receive live location updates. Events: ready, location, keep-alive."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Trusted Contacts",
+      "item": [
+        {
+          "name": "List Trusted Contacts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/trusted-contacts/",
+              "host": ["{{baseUrl}}"],
+              "path": ["trusted-contacts", ""]
+            },
+            "description": "Retrieve all accepted trusted contacts for the authenticated user."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Trust Request",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.request) {",
+                  "        pm.collectionVariables.set('request_id', jsonData.request.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Amit Verma\",\n  \"phone\": \"+918956234710\",\n  \"email\": \"amit.verma@email.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/trusted-contacts/requests",
+              "host": ["{{baseUrl}}"],
+              "path": ["trusted-contacts", "requests"]
+            },
+            "description": "Send a trusted contact invitation. The contact must be registered on the platform."
+          },
+          "response": []
+        },
+        {
+          "name": "Accept Trust Request",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.contact) {",
+                  "        pm.collectionVariables.set('contact_id', jsonData.contact.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"accept-token-from-invitation\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/trusted-contacts/requests/{{request_id}}/accept",
+              "host": ["{{baseUrl}}"],
+              "path": ["trusted-contacts", "requests", "{{request_id}}", "accept"]
+            },
+            "description": "Accept a trusted contact invitation using the accept token. Does not require authentication."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Trusted Contact",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/trusted-contacts/{{contact_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["trusted-contacts", "{{contact_id}}"]
+            },
+            "description": "Remove a trusted contact relationship."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
 }
