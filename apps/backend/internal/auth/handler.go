@@ -50,14 +50,14 @@ func (h *Handler) RegisterRoutes(router fiber.Router) {
 	authRoutes.Post("/login", h.login)
 	authRoutes.Post("/refresh", h.refresh)
 	authRoutes.Post("/logout", h.logout)
-	authRoutes.Get("/me", h.requireAuth, h.me)
-	authRoutes.Post("/push-token", h.requireAuth, h.updatePushToken)
+	authRoutes.Get("/me", h.auth.VerifyUser(), h.me)
+	authRoutes.Post("/push-token", h.auth.VerifyUser(), h.updatePushToken)
 }
 
 func (h *Handler) updatePushToken(c *fiber.Ctx) error {
 	user, ok := c.Locals(currentUserKey).(*User)
 	if !ok || user == nil {
-		return h.writeAuthError(c, ErrUnauthorized)
+		return writeAuthError(c, ErrUnauthorized)
 	}
 
 	var req pushTokenRequest
@@ -68,14 +68,13 @@ func (h *Handler) updatePushToken(c *fiber.Ctx) error {
 	}
 
 	if err := h.service.UpdatePushToken(c.UserContext(), user.ID, req.Token); err != nil {
-		return h.writeAuthError(c, err)
+		return writeAuthError(c, err)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status": "updated",
 	})
 }
-
 
 func (h *Handler) register(c *fiber.Ctx) error {
 	var req authRequest

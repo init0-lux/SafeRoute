@@ -318,12 +318,494 @@
 					}
 				}
 			]
+		},
+		{
+			"name": "Reports",
+			"item": [
+				{
+					"name": "Create Report",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const body = pm.response.json();",
+									"    if (body.report && body.report.id) {",
+									"        pm.collectionVariables.set('report_id', body.report.id);",
+									"    }",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"harassment\",\n    \"description\": \"man following me near the bus stop\",\n    \"lat\": 12.9716,\n    \"lng\": 77.5946\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/reports",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"reports"
+							]
+						},
+						"description": "Create a new incident report. This request requires the auth cookies set by Register or Login to already exist in Postman's cookie jar for localhost. On success, the Postman test script stores `report_id` automatically."
+					},
+					"response": [
+						{
+							"name": "Create Report Success",
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"report\": {\n        \"id\": \"report-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"type\": \"harassment\",\n        \"description\": \"man following me near the bus stop\",\n        \"lat\": 12.9716,\n        \"lng\": 77.5946,\n        \"occurred_at\": \"2026-03-31T10:30:00Z\",\n        \"created_at\": \"2026-03-31T10:30:00Z\",\n        \"source\": \"app\",\n        \"trust_score\": 0.3\n    }\n}"
+						},
+						{
+							"name": "Create Report Unauthorized",
+							"status": "Unauthorized",
+							"code": 401,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"unauthorized\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Report By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/reports/{{report_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"reports",
+								"{{report_id}}"
+							]
+						},
+						"description": "Fetch a single report by its ID. Set the collection variable `report_id` from a previously created report."
+					},
+					"response": [
+						{
+							"name": "Get Report Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"report\": {\n        \"id\": \"report-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"type\": \"harassment\",\n        \"description\": \"man following me near the bus stop\",\n        \"lat\": 12.9716,\n        \"lng\": 77.5946,\n        \"occurred_at\": \"2026-03-31T10:30:00Z\",\n        \"created_at\": \"2026-03-31T10:30:00Z\",\n        \"source\": \"app\",\n        \"evidence_ids\": [\n            \"evidence-1\"\n        ],\n        \"trust_score\": 0.3\n    }\n}"
+						},
+						{
+							"name": "Get Report Not Found",
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"report not found\"\n}"
+						}
+					]
+				},
+				{
+					"name": "List Nearby Reports",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/reports?lat=12.9716&lng=77.5946&radius=500&limit=20&offset=0",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"reports"
+							],
+							"query": [
+								{
+									"key": "lat",
+									"value": "12.9716"
+								},
+								{
+									"key": "lng",
+									"value": "77.5946"
+								},
+								{
+									"key": "radius",
+									"value": "500"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								}
+							]
+						},
+						"description": "List nearby reports using radius search. Results are paginated and sorted by trust score and recency."
+					},
+					"response": [
+						{
+							"name": "Nearby Reports Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"reports\": [\n        {\n            \"id\": \"report-123\",\n            \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n            \"type\": \"harassment\",\n            \"description\": \"man following me near the bus stop\",\n            \"lat\": 12.9716,\n            \"lng\": 77.5946,\n            \"occurred_at\": \"2026-03-31T10:30:00Z\",\n            \"created_at\": \"2026-03-31T10:30:00Z\",\n            \"source\": \"app\",\n            \"trust_score\": 0.3,\n            \"distance_meters\": 0\n        }\n    ],\n    \"count\": 1,\n    \"limit\": 20,\n    \"offset\": 0\n}"
+						},
+						{
+							"name": "Nearby Reports Bad Request",
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"radius must be greater than 0 and within the configured maximum\"\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Trust",
+			"item": [
+				{
+					"name": "Get My Trust",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/trust/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"trust",
+								"me"
+							]
+						},
+						"description": "Fetch the current authenticated user's trust score, counts, and explainable breakdown. Requires auth cookies from Register or Login."
+					},
+					"response": [
+						{
+							"name": "Trust Me Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"score\": 0.3,\n    \"reports_count\": 1,\n    \"corroboration_count\": 0,\n    \"verified\": false,\n    \"updated_at\": \"2026-03-31T10:30:00Z\",\n    \"breakdown\": {\n        \"base\": 0.3,\n        \"corroboration_bonus\": 0,\n        \"verified_bonus\": 0\n    }\n}"
+						},
+						{
+							"name": "Trust Me Unauthorized",
+							"status": "Unauthorized",
+							"code": 401,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"unauthorized\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Verify Trust",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"verified\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/trust/verify",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"trust",
+								"verify"
+							]
+						},
+						"description": "Stub verification endpoint for the authenticated user. For now this toggles the verified flag and recomputes trust score."
+					},
+					"response": [
+						{
+							"name": "Verify Trust Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"score\": 0.45,\n    \"reports_count\": 1,\n    \"corroboration_count\": 0,\n    \"verified\": true,\n    \"updated_at\": \"2026-03-31T10:35:00Z\",\n    \"breakdown\": {\n        \"base\": 0.3,\n        \"corroboration_bonus\": 0,\n        \"verified_bonus\": 0.15\n    }\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Evidence",
+			"item": [
+				{
+					"name": "Upload Evidence To Report",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const body = pm.response.json();",
+									"    if (body.evidence && body.evidence.id) {",
+									"        pm.collectionVariables.set('evidence_id', body.evidence.id);",
+									"    }",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "report_id",
+									"value": "{{report_id}}",
+									"type": "text"
+								},
+								{
+									"key": "file",
+									"type": "file",
+									"src": ""
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/evidence/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"evidence",
+								"upload"
+							]
+						},
+						"description": "Upload evidence linked to a report. Use a supported image or audio file. On success, the Postman test script stores `evidence_id` automatically."
+					},
+					"response": [
+						{
+							"name": "Upload Evidence Success",
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"evidence\": {\n        \"id\": \"evidence-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"report_id\": \"report-123\",\n        \"type\": \"image\",\n        \"url\": \"http://localhost:8080/api/v1/evidence/evidence-123/content\",\n        \"hash\": \"6c1d6f0a4d4e9f0d66f8f8f1c1e1b89b0f7c2f39cb8e4f34d70b7fbe95d7a4c3\",\n        \"media_type\": \"image/png\",\n        \"size_bytes\": 2048,\n        \"original_filename\": \"photo.png\",\n        \"created_at\": \"2026-03-31T10:40:00Z\"\n    }\n}"
+						},
+						{
+							"name": "Upload Evidence Bad Request",
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"unsupported media type\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Evidence Metadata",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/evidence/{{evidence_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"evidence",
+								"{{evidence_id}}"
+							]
+						},
+						"description": "Fetch evidence metadata for the authenticated owner."
+					},
+					"response": [
+						{
+							"name": "Evidence Metadata Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"evidence\": {\n        \"id\": \"evidence-123\",\n        \"user_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"report_id\": \"report-123\",\n        \"type\": \"image\",\n        \"url\": \"http://localhost:8080/api/v1/evidence/evidence-123/content\",\n        \"hash\": \"6c1d6f0a4d4e9f0d66f8f8f1c1e1b89b0f7c2f39cb8e4f34d70b7fbe95d7a4c3\",\n        \"media_type\": \"image/png\",\n        \"size_bytes\": 2048,\n        \"original_filename\": \"photo.png\",\n        \"created_at\": \"2026-03-31T10:40:00Z\"\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Evidence Content",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/evidence/{{evidence_id}}/content",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"evidence",
+								"{{evidence_id}}",
+								"content"
+							]
+						},
+						"description": "Download the raw evidence file for the authenticated owner."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Safety",
+			"item": [
+				{
+					"name": "Get Safety Score",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/safety/score?lat=12.9716&lng=77.5946&radius=500",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"safety",
+								"score"
+							],
+							"query": [
+								{
+									"key": "lat",
+									"value": "12.9716"
+								},
+								{
+									"key": "lng",
+									"value": "77.5946"
+								},
+								{
+									"key": "radius",
+									"value": "500"
+								}
+							]
+						},
+						"description": "Compute a safety score for a point using recent and historical nearby reports, trust-weighted density, and a time-of-day factor."
+					},
+					"response": [
+						{
+							"name": "Safety Score Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"score\": 62,\n    \"risk_level\": \"moderate\",\n    \"factors\": {\n        \"recent_reports\": 3,\n        \"historical_reports\": 12,\n        \"recent_trust_weight\": 1.8,\n        \"historical_trust_weight\": 6.4,\n        \"time_risk\": \"high\",\n        \"time_risk_multiplier\": 0.8,\n        \"confidence\": \"high\",\n        \"confidence_score\": 1,\n        \"radius_meters\": 500,\n        \"recent_window_hours\": 6\n    }\n}"
+						},
+						{
+							"name": "Safety Score Bad Request",
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"radius must be greater than 0 and within the configured maximum\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Route Safety Score",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"origin\": {\n        \"lat\": 12.9716,\n        \"lng\": 77.5946\n    },\n    \"destination\": {\n        \"lat\": 12.9352,\n        \"lng\": 77.6245\n    },\n    \"travel_mode\": \"walking\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/safety/route-score",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"safety",
+								"route-score"
+							]
+						},
+						"description": "Compute a safety score for the backend-chosen walking route between an origin and destination. Requires a configured Google Routes API key on the backend."
+					},
+					"response": [
+						{
+							"name": "Route Safety Score Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"score\": 58,\n    \"risk_level\": \"moderate\",\n    \"route\": {\n        \"distance_meters\": 4200,\n        \"duration_seconds\": 3120,\n        \"polyline\": \"encoded-polyline-from-provider\"\n    },\n    \"summary\": {\n        \"recent_reports\": 6,\n        \"historical_reports\": 23,\n        \"recent_trust_weight\": 3.1,\n        \"historical_trust_weight\": 10.8,\n        \"highest_risk_segment_index\": 4\n    },\n    \"segments\": [\n        {\n            \"index\": 0,\n            \"start_fraction\": 0,\n            \"end_fraction\": 0.125,\n            \"score\": 74,\n            \"risk_level\": \"moderate\",\n            \"factors\": {\n                \"recent_reports\": 0,\n                \"historical_reports\": 2,\n                \"recent_trust_weight\": 0,\n                \"historical_trust_weight\": 0.6,\n                \"time_risk\": \"high\",\n                \"time_risk_multiplier\": 0.8,\n                \"confidence\": \"low\",\n                \"confidence_score\": 0.12\n            }\n        }\n    ]\n}"
+						},
+						{
+							"name": "Route Safety Score Unavailable",
+							"status": "Service Unavailable",
+							"code": 503,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"route provider unavailable\"\n}"
+						}
+					]
+				}
+			]
 		}
 	],
 	"variable": [
 		{
 			"key": "base_url",
 			"value": "http://localhost:8080/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "report_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "evidence_id",
+			"value": "",
 			"type": "string"
 		}
 	]

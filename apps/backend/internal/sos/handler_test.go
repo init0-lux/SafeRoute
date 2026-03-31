@@ -280,6 +280,19 @@ func (r *memoryAuthRepository) GetUserByID(_ context.Context, id string) (*auth.
 	return &copyUser, nil
 }
 
+func (r *memoryAuthRepository) UpdatePushToken(_ context.Context, id string, token string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	user, exists := r.byID[id]
+	if !exists {
+		return auth.ErrUserNotFound
+	}
+
+	user.ExpoPushToken = &token
+	return nil
+}
+
 type memorySOSRepository struct {
 	mu              sync.Mutex
 	nextID          int
@@ -319,6 +332,14 @@ func (r *memorySOSRepository) CreateSession(_ context.Context, session *sos.SOSS
 	session.StartedAt = clone.StartedAt
 
 	return nil
+}
+
+func (r *memorySOSRepository) ExistsSession(_ context.Context, sessionID string) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	_, exists := r.sessions[sessionID]
+	return exists, nil
 }
 
 func (r *memorySOSRepository) GetSessionByID(_ context.Context, sessionID string) (*sos.SOSSession, error) {

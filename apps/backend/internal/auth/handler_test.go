@@ -302,3 +302,16 @@ func (r *memoryRepository) GetUserByID(_ context.Context, id string) (*auth.User
 	copyUser := *user
 	return &copyUser, nil
 }
+
+func (r *memoryRepository) UpdatePushToken(_ context.Context, id string, token string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	user, exists := r.byID[id]
+	if !exists {
+		return auth.ErrUserNotFound
+	}
+
+	user.ExpoPushToken = &token
+	return nil
+}

@@ -10,6 +10,7 @@ import (
 )
 
 type Repository interface {
+	ExistsSession(ctx context.Context, id string) (bool, error)
 	CreateSession(ctx context.Context, session *SOSSession) error
 	GetSessionByID(ctx context.Context, sessionID string) (*SOSSession, error)
 	GetActiveSessionByUserID(ctx context.Context, userID string) (*SOSSession, error)
@@ -27,6 +28,15 @@ type GormRepository struct {
 
 func NewRepository(db *gorm.DB) *GormRepository {
 	return &GormRepository{db: db}
+}
+
+func (r *GormRepository) ExistsSession(ctx context.Context, id string) (bool, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).Model(&SOSSession{}).Where("id = ?", id).Count(&count).Error; err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }
 
 func (r *GormRepository) CreateSession(ctx context.Context, session *SOSSession) error {

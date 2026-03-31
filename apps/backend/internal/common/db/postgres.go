@@ -122,12 +122,33 @@ func EnsureStatusEnums(db *gorm.DB) error {
 
 func EnsureSchemaArtifacts(db *gorm.DB) error {
 	statements := []string{
+		`DO $$
+		BEGIN
+			IF EXISTS (
+				SELECT 1
+				FROM information_schema.columns
+				WHERE table_schema = 'public'
+				  AND table_name = 'reports'
+				  AND column_name = 'location'
+				  AND udt_name <> 'geography'
+			) THEN
+				ALTER TABLE reports
+					ALTER COLUMN location TYPE geography(POINT,4326)
+					USING ST_SetSRID(location, 4326)::geography;
+			END IF;
+		END
+		$$`,
 		"ALTER TABLE evidence DROP COLUMN IF EXISTS client_encrypted",
+		"CREATE INDEX IF NOT EXISTS evidence_report_idx ON evidence (report_id, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS evidence_session_idx ON evidence (session_id, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS evidence_user_created_idx ON evidence (user_id, created_at DESC)",
 		"ALTER TABLE trusted_contacts ADD COLUMN IF NOT EXISTS request_id uuid",
 		"ALTER TABLE trusted_contacts ADD COLUMN IF NOT EXISTS accepted_at timestamptz NOT NULL DEFAULT now()",
 		"ALTER TABLE trusted_contact_requests ADD COLUMN IF NOT EXISTS accepted_contact_id uuid",
 		"CREATE INDEX IF NOT EXISTS reports_location_idx ON reports USING GIST(location)",
+		"CREATE INDEX IF NOT EXISTS reports_created_at_idx ON reports (created_at DESC)",
 		"CREATE INDEX IF NOT EXISTS reports_occurred_at_idx ON reports (occurred_at DESC)",
+		"CREATE INDEX IF NOT EXISTS reports_user_created_idx ON reports (user_id, created_at DESC)",
 		"CREATE INDEX IF NOT EXISTS location_pings_session_idx ON location_pings (session_id, recorded_at DESC)",
 		"CREATE INDEX IF NOT EXISTS complaint_events_report_created_idx ON complaint_events (report_id, created_at DESC)",
 		"CREATE INDEX IF NOT EXISTS trusted_contact_requests_user_phone_status_idx ON trusted_contact_requests (user_id, phone, status)",

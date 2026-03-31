@@ -241,6 +241,19 @@ func (r *memoryAuthRepository) GetUserByID(_ context.Context, id string) (*auth.
 	return &copyUser, nil
 }
 
+func (r *memoryAuthRepository) UpdatePushToken(_ context.Context, id string, token string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	user, exists := r.byID[id]
+	if !exists {
+		return auth.ErrUserNotFound
+	}
+
+	user.ExpoPushToken = &token
+	return nil
+}
+
 type memoryRepository struct {
 	mu              sync.Mutex
 	nextRequestID   int
